@@ -1,0 +1,282 @@
+"""
+Tests for the pycytominer module.
+"""
+
+import pandas as pd
+import pytest
+
+from rerx.pycytominer import (
+    BUSCAR_STATE_OTHER,
+    DEFAULT_FEATURE_SELECT_OPERATIONS,
+    PYCYTOMINER_CONTROL_REFERENCE,
+    PYCYTOMINER_CONTROL_SAMPLE,
+    RXRX_CONTROL_ACTIVE_UNTREATED,
+    RXRX_CONTROL_MOCK,
+    RXRX_CONTROL_TREATED,
+    RXRX_CONTROL_UV,
+    add_control_columns,
+    add_perturbation_column,
+    annotate_profiles,
+    buscar_state,
+    normalization_samples_query,
+    pycytominer_control_type,
+    rename_image_metadata_columns,
+    rxrx_control_type,
+)
+
+
+def test_rename_image_metadata_columns() -> None:
+    df = pd.DataFrame(
+        {
+            "Image_Metadata_Experiment": ["HRCE-1"],
+            "Image_Metadata_Plate": ["25"],
+            "Image_Metadata_Well": ["A01"],
+            "Image_Metadata_Site": [1],
+            "Cells_AreaShape_Area": [100.0],
+        }
+    )
+    renamed = rename_image_metadata_columns(df)
+    assert "Metadata_Experiment" in renamed.columns
+    assert "Metadata_Plate" in renamed.columns
+    assert "Metadata_Well" in renamed.columns
+    assert "Metadata_Site" in renamed.columns
+    assert "Image_Metadata_Experiment" not in renamed.columns
+    assert "Cells_AreaShape_Area" in renamed.columns
+
+
+def test_rename_image_metadata_columns_missing_is_noop() -> None:
+    # MorphEm profiles have no Image_Metadata_* columns at all.
+    df = pd.DataFrame({"embedding_0": [1.0], "embedding_1": [2.0]})
+    renamed = rename_image_metadata_columns(df)
+    assert list(renamed.columns) == list(df.columns)
+
+
+@pytest.mark.parametrize(
+    ("disease_condition", "treatment", "expected"),
+    [
+        ("Mock", None, RXRX_CONTROL_MOCK),
+        ("UV Inactivated SARS-CoV-2", None, RXRX_CONTROL_UV),
+        ("Active SARS-CoV-2", None, RXRX_CONTROL_ACTIVE_UNTREATED),
+        ("Active SARS-CoV-2", "", RXRX_CONTROL_ACTIVE_UNTREATED),
+        ("Active SARS-CoV-2", "Remdesivir (GS-5734)", RXRX_CONTROL_TREATED),
+    ],
+)
+def test_rxrx_control_type(disease_condition: str, treatment, expected: str) -> None:
+    row = pd.Series({"disease_condition": disease_condition, "treatment": treatment})
+    assert rxrx_control_type(row) == expected
+
+
+def test_pycytominer_control_type_mock_is_reference() -> None:
+    assert pycytominer_control_type(RXRX_CONTROL_MOCK) == PYCYTOMINER_CONTROL_REFERENCE
+
+
+@pytest.mark.parametrize(
+    "rxrx",
+    [RXRX_CONTROL_UV, RXRX_CONTROL_ACTIVE_UNTREATED, RXRX_CONTROL_TREATED],
+)
+def test_pycytominer_control_type_others_are_sample(rxrx: str) -> None:
+    assert pycytominer_control_type(rxrx) == PYCYTOMINER_CONTROL_SAMPLE
+
+
+def test_buscar_state_mock_is_healthy() -> None:
+    from rerx.metadata import HEALTHY_STATE
+
+    assert buscar_state(RXRX_CONTROL_MOCK) == HEALTHY_STATE
+
+
+@pytest.mark.parametrize(
+    "rxrx",
+    [RXRX_CONTROL_UV, RXRX_CONTROL_ACTIVE_UNTREATED, RXRX_CONTROL_TREATED],
+)
+def test_buscar_state_challenged_is_disease(rxrx: str) -> None:
+    from rerx.metadata import DISEASE_STATE
+
+    assert buscar_state(rxrx) == DISEASE_STATE
+
+
+def test_buscar_state_unknown_is_other() -> None:
+    assert buscar_state("something_else") == BUSCAR_STATE_OTHER
+
+
+def test_add_control_columns_three_separate_meanings() -> None:
+    df = pd.DataFrame(
+        {
+            "disease_condition": ["Mock", "Active SARS-CoV-2"],
+            "treatment": [None, "Remdesivir (GS-5734)"],
+        }
+    )
+    out = add_control_columns(df)
+    assert "Metadata_rxrx_control_type" in out.columns
+    assert "Metadata_pycytominer_control_type" in out.columns
+    assert "Metadata_buscar_state" in out.columns
+    assert out["Metadata_rxrx_control_type"].tolist() == [
+        RXRX_CONTROL_MOCK,
+        RXRX_CONTROL_TREATED,
+    ]
+    assert out["Metadata_pycytominer_control_type"].tolist() == [
+        PYCYTOMINER_CONTROL_REFERENCE,
+        PYCYTOMINER_CONTROL_SAMPLE,
+    ]
+
+
+def test_add_control_columns_missing_columns_raises() -> None:
+    df = pd.DataFrame({"foo": [1]})
+    with pytest.raises(ValueError, match="disease_condition"):
+        add_control_columns(df)
+
+
+def test_add_control_columns_works_with_prefixed_names() -> None:
+    df = pd.DataFrame(
+        {
+            "Metadata_disease_condition": ["Mock"],
+            "Metadata_treatment": [None],
+        }
+    )
+    out = add_control_columns(df)
+    assert out["Metadata_rxrx_control_type"].tolist() == [RXRX_CONTROL_MOCK]
+
+
+def test_normalization_samples_query() -> None:
+    query = normalization_samples_query()
+    assert query == "Metadata_pycytominer_control_type == 'control'"
+
+
+def _sample_cp_profiles() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "Metadata_cell_id": ["a", "b", "c"],
+            "Image_Metadata_Experiment": ["HRCE-1"] * 3,
+            "Image_Metadata_Plate": ["25"] * 3,
+            "Image_Metadata_Well": ["A01", "A02", "A02"],
+            "Image_Metadata_Site": [1, 1, 1],
+            "Cells_AreaShape_Area": [100.0, 110.0, 120.0],
+        }
+    )
+
+
+def _sample_site_metadata() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "experiment": ["HRCE-1", "HRCE-1"],
+            "plate": ["25", "25"],
+            "well": ["A01", "A02"],
+            "site": [1, 1],
+            "disease_condition": ["Mock", "Active SARS-CoV-2"],
+            "treatment": [None, "Remdesivir (GS-5734)"],
+        }
+    )
+
+
+def test_annotate_profiles_joins_and_adds_controls() -> None:
+    profiles = _sample_cp_profiles()
+    site_metadata = _sample_site_metadata()
+
+    annotated = annotate_profiles(profiles, site_metadata)
+
+    assert len(annotated) == 3
+    assert "Metadata_Well" in annotated.columns
+    assert "Metadata_rxrx_control_type" in annotated.columns
+    a01_rows = annotated[annotated["Metadata_Well"] == "A01"]
+    assert (a01_rows["Metadata_rxrx_control_type"] == RXRX_CONTROL_MOCK).all()
+    a02_rows = annotated[annotated["Metadata_Well"] == "A02"]
+    assert (a02_rows["Metadata_rxrx_control_type"] == RXRX_CONTROL_TREATED).all()
+
+
+def test_annotate_profiles_missing_join_columns_raises() -> None:
+    profiles = pd.DataFrame({"Cells_AreaShape_Area": [1.0]})
+    site_metadata = _sample_site_metadata()
+    with pytest.raises(ValueError, match="missing join columns"):
+        annotate_profiles(profiles, site_metadata)
+
+
+def test_default_feature_select_operations() -> None:
+    assert DEFAULT_FEATURE_SELECT_OPERATIONS == [
+        "variance_threshold",
+        "correlation_threshold",
+        "blocklist",
+        "drop_na_columns",
+    ]
+
+
+def test_add_perturbation_column_treatment_and_concentration() -> None:
+    df = pd.DataFrame(
+        {
+            "Metadata_treatment": [
+                "Remdesivir (GS-5734)",
+                "Remdesivir (GS-5734)",
+                None,
+            ],
+            "Metadata_treatment_conc": ["1.0", "2.0", None],
+        }
+    )
+    out = add_perturbation_column(df)
+    assert out["Metadata_perturbation"].tolist() == [
+        "Remdesivir (GS-5734)__1.0",
+        "Remdesivir (GS-5734)__2.0",
+        "control",
+    ]
+
+
+def test_add_perturbation_column_untreated_is_control() -> None:
+    df = pd.DataFrame(
+        {"Metadata_treatment": ["", None], "Metadata_treatment_conc": ["", None]}
+    )
+    out = add_perturbation_column(df)
+    assert out["Metadata_perturbation"].tolist() == ["control", "control"]
+
+
+def test_add_perturbation_column_uses_rxrx_control_type_when_present() -> None:
+    # mock/uv/active_untreated arms are all "untreated" but should stay
+    # distinguishable in the BUSCAR score table (plan.md section 19).
+    df = pd.DataFrame(
+        {
+            "Metadata_treatment": ["", "", "", "Remdesivir (GS-5734)"],
+            "Metadata_treatment_conc": ["", "", "", "1.0"],
+            "Metadata_rxrx_control_type": [
+                "mock",
+                "uv",
+                "active_untreated",
+                "treated",
+            ],
+        }
+    )
+    out = add_perturbation_column(df)
+    assert out["Metadata_perturbation"].tolist() == [
+        "mock",
+        "uv",
+        "active_untreated",
+        "Remdesivir (GS-5734)__1.0",
+    ]
+
+
+def test_add_perturbation_column_missing_columns_raises() -> None:
+    df = pd.DataFrame({"foo": [1]})
+    with pytest.raises(ValueError, match="Metadata_treatment"):
+        add_perturbation_column(df)
+
+
+def test_features_argument_cellprofiler_profiles_infer() -> None:
+    from rerx.pycytominer import _features_argument
+
+    assert _features_argument(_sample_cp_profiles()) == "infer"
+
+
+def test_features_argument_morphem_profiles_explicit() -> None:
+    from rerx.pycytominer import _features_argument
+
+    profiles = pd.DataFrame(
+        {
+            "Metadata_cell_id": ["a", "b"],
+            "Morphem_red_0": [0.1, 0.2],
+            "Morphem_red_1": [0.3, 0.4],
+        }
+    )
+    features = _features_argument(profiles)
+    assert features == ["Morphem_red_0", "Morphem_red_1"]
+
+
+def test_features_argument_no_features_defaults_infer() -> None:
+    from rerx.pycytominer import _features_argument
+
+    profiles = pd.DataFrame({"Metadata_cell_id": ["a"]})
+    assert _features_argument(profiles) == "infer"
