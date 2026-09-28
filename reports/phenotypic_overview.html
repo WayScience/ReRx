@@ -71,7 +71,8 @@
   .plot-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
   canvas { max-width: 100%; }
   .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; justify-content: center; }
-  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; }
+  .legend-item.off { opacity: 0.35; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .note {
     font-size: 13px; color: var(--ink-muted); background: var(--surface-alt);
@@ -139,6 +140,7 @@
       </div>
     </div>
     <div class="legend-row" id="sharedLegend"></div>
+    <div class="plot-sub" style="margin-top:6px">click a legend key to show or hide that group in both plots</div>
   </section>
 
   <section>
@@ -202,6 +204,7 @@
       </div>
     </div>
     <div class="legend-row" id="morphemLegend"></div>
+    <div class="plot-sub" style="margin-top:6px">click a legend key to show or hide that group</div>
   </section>
 
   <section>
@@ -8361,6 +8364,7 @@ function toDatasets(points) {
     groups[g].push({ x: p.x, y: p.y, meta: p });
   }
   return Object.entries(groups).map(([group, pts]) => ({
+    _key: group,
     label: LABELS[group] || group,
     data: pts,
     backgroundColor: COLORS[group],
@@ -8395,23 +8399,45 @@ function scatterOptions(xLabel, yLabel) {
   };
 }
 
-new Chart(document.getElementById('cpScatter'), {
+const cpChart = new Chart(document.getElementById('cpScatter'), {
   type: 'scatter',
   data: { datasets: toDatasets(data.cellprofiler_umap) },
   options: scatterOptions('UMAP 1', 'UMAP 2')
 });
 
-new Chart(document.getElementById('embScatter'), {
+const embChart = new Chart(document.getElementById('embScatter'), {
   type: 'scatter',
   data: { datasets: toDatasets(data.recursion_umap) },
   options: scatterOptions('UMAP 1', 'UMAP 2')
 });
+
+// Clicking a legend key shows/hides that group's points in every chart.
+const chartsByLegendKey = {};
+function registerLegendKeys(chart, keys) {
+  for (const key of keys) {
+    if (!chartsByLegendKey[key]) chartsByLegendKey[key] = [];
+    chartsByLegendKey[key].push(chart);
+  }
+}
+registerLegendKeys(cpChart, cpChart.data.datasets.map((d) => d._key));
+registerLegendKeys(embChart, embChart.data.datasets.map((d) => d._key));
+
+function toggleLegendKey(key, itemEl) {
+  const hidden = itemEl.classList.toggle('off');
+  for (const chart of chartsByLegendKey[key]) {
+    for (const ds of chart.data.datasets) {
+      if (ds._key === key) ds.hidden = hidden;
+    }
+    chart.update();
+  }
+}
 
 const legendEl = document.getElementById('sharedLegend');
 Object.entries(LABELS).forEach(([key, label]) => {
   const item = document.createElement('div');
   item.className = 'legend-item';
   item.innerHTML = `<span class="swatch" style="background:${COLORS[key]}"></span>${label}`;
+  item.addEventListener('click', () => toggleLegendKey(key, item));
   legendEl.appendChild(item);
 });
 
@@ -8429,17 +8455,19 @@ if (data.morphem) {
   document.getElementById('statMorphemRho').textContent = m.spearman_vs_cellprofiler.toFixed(2);
   document.getElementById('statMorphemKnn').textContent = m.knn_overlap_vs_cellprofiler_k10.toFixed(2);
 
-  new Chart(document.getElementById('morphemScatter'), {
+  const morphemChart = new Chart(document.getElementById('morphemScatter'), {
     type: 'scatter',
     data: { datasets: toDatasets(m.umap_points) },
     options: scatterOptions('UMAP 1', 'UMAP 2')
   });
+  registerLegendKeys(morphemChart, morphemChart.data.datasets.map((d) => d._key));
 
   const mLegend = document.getElementById('morphemLegend');
   Object.entries(LABELS).forEach(([key, label]) => {
     const item = document.createElement('div');
     item.className = 'legend-item';
     item.innerHTML = `<span class="swatch" style="background:${COLORS[key]}"></span>${label}`;
+    item.addEventListener('click', () => toggleLegendKey(key, item));
     mLegend.appendChild(item);
   });
 }

@@ -16,6 +16,14 @@ from a plain file:// URL with no server, no network, and no build step.
   response, full score table). Explains why the report scores wells
   instead of single cells (see `rerx.validate.check_control_separation`).
 
+## Screenshots
+
+Static full-page screenshots of both reports live in `screenshots/`, so
+they render inline in GitHub PRs without opening the HTML files:
+
+- `screenshots/phenotypic_overview.png`
+- `screenshots/buscar_reversal.png`
+
 ## Regenerating the data
 
 Four scripts build the report payloads from local copies of the pilot

@@ -68,7 +68,8 @@
   .plot-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
   canvas { max-width: 100%; }
   .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; justify-content: center; }
-  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; }
+  .legend-item.off { opacity: 0.35; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .note {
     font-size: 13px; color: var(--ink-muted); background: var(--surface-alt);
@@ -149,6 +150,7 @@
       <canvas id="quadrantScatter" height="110"></canvas>
     </div>
     <div class="legend-row" id="compoundLegend"></div>
+    <div class="plot-sub" style="margin-top:6px">click a legend key to show or hide that compound&rsquo;s points</div>
   </section>
 
   <section>
@@ -257,7 +259,7 @@ const quadrantDatasets = Object.entries(quadrantGroups).map(([compound, pts]) =>
   pointStyle: (ctx) => ctx.raw && ctx.raw.meta && ctx.raw.meta.is_reference ? 'rectRot' : 'circle'
 }));
 
-new Chart(document.getElementById('quadrantScatter'), {
+const quadrantChart = new Chart(document.getElementById('quadrantScatter'), {
   type: 'scatter',
   data: { datasets: quadrantDatasets },
   options: {
@@ -285,6 +287,13 @@ Object.entries(quadrantGroups).forEach(([compound]) => {
   const item = document.createElement('div');
   item.className = 'legend-item';
   item.innerHTML = `<span class="swatch" style="background:${colorFor(compound)}"></span>${labelFor(compound)}`;
+  item.addEventListener('click', () => {
+    const hidden = item.classList.toggle('off');
+    for (const ds of quadrantChart.data.datasets) {
+      if (ds.label === labelFor(compound)) ds.hidden = hidden;
+    }
+    quadrantChart.update();
+  });
   legendEl.appendChild(item);
 });
 
