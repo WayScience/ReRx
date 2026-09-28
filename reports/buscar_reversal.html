@@ -68,7 +68,7 @@
   .plot-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
   canvas { max-width: 100%; }
   .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; justify-content: center; }
-  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
   .legend-item.off { opacity: 0.35; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .note {
@@ -284,16 +284,20 @@ const quadrantChart = new Chart(document.getElementById('quadrantScatter'), {
 
 const legendEl = document.getElementById('compoundLegend');
 Object.entries(quadrantGroups).forEach(([compound]) => {
-  const item = document.createElement('div');
+  const item = document.createElement('button');
+  item.type = 'button';
   item.className = 'legend-item';
+  item.setAttribute('aria-pressed', 'true');
   item.innerHTML = `<span class="swatch" style="background:${colorFor(compound)}"></span>${labelFor(compound)}`;
-  item.addEventListener('click', () => {
+  const toggle = () => {
     const hidden = item.classList.toggle('off');
+    item.setAttribute('aria-pressed', String(!hidden));
     for (const ds of quadrantChart.data.datasets) {
       if (ds.label === labelFor(compound)) ds.hidden = hidden;
     }
     quadrantChart.update();
-  });
+  };
+  item.addEventListener('click', toggle);
   legendEl.appendChild(item);
 });
 

@@ -361,6 +361,54 @@ def _finalize_profiles(
     )
 
 
+def _fuse_finalized_profiles() -> None:
+    """Fuse finalized CP and MorphEm profiles on Metadata_cell_id.
+
+    Pairs each plate's CP table with its own MorphEm table by
+    experiment/plate partition (not sorted-file order), and fuses every
+    shared pair; unmatched partitions are skipped (inner-join behavior,
+    same as fuse_features itself).
+    """
+    import pandas as pd
+
+    from rerx.fuse import (
+        fuse_features,
+        pair_fused_partitions,
+        write_fused_profiles,
+    )
+
+    cp_selected = sorted(
+        (RUN_DIR / "profiles" / "cellprofiler" / "feature_selected").glob(
+            "*/*/*.parquet"
+        )
+    )
+    morphem_selected = sorted(
+        (RUN_DIR / "profiles" / "morphem" / "feature_selected").glob("*/*/*.parquet")
+    )
+    if not (cp_selected and morphem_selected):
+        _log("fused output skipped: missing finalized CP or MorphEm")
+        return
+    pairs = pair_fused_partitions(cp_selected, morphem_selected)
+    if not pairs:
+        _log(
+            "fused output skipped: no shared experiment/plate "
+            "partitions between CP and MorphEm profiles"
+        )
+        return
+    fused = pd.concat(
+        [
+            fuse_features(pd.read_parquet(cp_path), pd.read_parquet(me_path))
+            for cp_path, me_path in pairs
+        ],
+        ignore_index=True,
+    )
+    fused_paths = write_fused_profiles(fused, RUN_DIR)
+    _log(
+        f"fused: {len(fused)} cells x {fused.shape[1]} cols from "
+        f"{len(pairs)} plate(s) -> {len(fused_paths)} partition(s)"
+    )
+
+
 def cmd_finalize() -> None:
     """Merge shards, then finalize (annotate/normalize/select/BUSCAR) per plate."""
     import pandas as pd
@@ -424,42 +472,7 @@ def cmd_finalize() -> None:
         # Fused output: early feature-concatenation fusion of the two
         # finalized spaces on Metadata_cell_id (see rerx.fuse). Labeled
         # in profiles/fused/fusion.json ("what kind of fused").
-        from rerx.fuse import (
-            fuse_features,
-            pair_fused_partitions,
-            write_fused_profiles,
-        )
-
-        cp_selected = sorted(
-            (RUN_DIR / "profiles" / "cellprofiler" / "feature_selected").glob(
-                "*/*/*.parquet"
-            )
-        )
-        morphem_selected = sorted(
-            (RUN_DIR / "profiles" / "morphem" / "feature_selected").glob(
-                "*/*/*.parquet"
-            )
-        )
-        if cp_selected and morphem_selected:
-            # Pair each plate's CP table with its own MorphEm table by
-            # experiment/plate partition (not sorted-file order), and
-            # fuse every shared pair; unmatched partitions are skipped
-            # (inner-join behavior, same as fuse_features itself).
-            pairs = pair_fused_partitions(cp_selected, morphem_selected)
-            fused = pd.concat(
-                [
-                    fuse_features(pd.read_parquet(cp_path), pd.read_parquet(me_path))
-                    for cp_path, me_path in pairs
-                ],
-                ignore_index=True,
-            )
-            fused_paths = write_fused_profiles(fused, RUN_DIR)
-            _log(
-                f"fused: {len(fused)} cells x {fused.shape[1]} cols from "
-                f"{len(pairs)} plate(s) -> {len(fused_paths)} partition(s)"
-            )
-        else:
-            _log("fused output skipped: missing finalized CP or MorphEm")
+        _fuse_finalized_profiles()
     elif morphem_shards:
         missing = sorted(expected - morphem_shards)
         _log(

@@ -33,10 +33,16 @@ clone):
 
 ```bash
 uv run python reports/scripts/prepare_data.py        # core payloads for both reports
-uv run python reports/scripts/morphem_report_data.py  # MorphEm QC + PCA comparison payload
+uv run python reports/scripts/morphem_report_data.py <run_dir> <out.json>  # MorphEm QC + PCA comparison payload
 uv run --frozen --with umap-learn python reports/scripts/umap_report_data.py  # UMAP coordinates
 uv run python reports/scripts/embed_data.py          # embed the JSON payloads into the HTML
 ```
+
+`morphem_report_data.py` reads the finalized MorphEm table from the run's
+durable storage, not from `data/` — pass the run directory as the first
+argument (for example
+`/pl/active/koala/ReRx/runs/pilot-dev`). It defaults to the local
+`runs/pilot-dev` directory if you have synced it.
 
 To rebuild the UMAP report data specifically, `data/` needs the
 full CellProfiler feature-selected table

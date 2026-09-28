@@ -71,7 +71,7 @@
   .plot-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
   canvas { max-width: 100%; }
   .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12px; justify-content: center; }
-  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-muted); cursor: pointer; user-select: none; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
   .legend-item.off { opacity: 0.35; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .note {
@@ -8434,8 +8434,10 @@ function toggleLegendKey(key, itemEl) {
 
 const legendEl = document.getElementById('sharedLegend');
 Object.entries(LABELS).forEach(([key, label]) => {
-  const item = document.createElement('div');
+  const item = document.createElement('button');
+  item.type = 'button';
   item.className = 'legend-item';
+  item.setAttribute('aria-pressed', 'true');
   item.innerHTML = `<span class="swatch" style="background:${COLORS[key]}"></span>${label}`;
   item.addEventListener('click', () => toggleLegendKey(key, item));
   legendEl.appendChild(item);
@@ -8464,8 +8466,10 @@ if (data.morphem) {
 
   const mLegend = document.getElementById('morphemLegend');
   Object.entries(LABELS).forEach(([key, label]) => {
-    const item = document.createElement('div');
+    const item = document.createElement('button');
+    item.type = 'button';
     item.className = 'legend-item';
+    item.setAttribute('aria-pressed', 'true');
     item.innerHTML = `<span class="swatch" style="background:${COLORS[key]}"></span>${label}`;
     item.addEventListener('click', () => toggleLegendKey(key, item));
     mLegend.appendChild(item);

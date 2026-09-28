@@ -110,9 +110,10 @@ def main() -> None:
         for i, s in enumerate(common)
     ]
 
+    available = [c for c in META_COLS if c in morphem.columns]
     morphem_meta = (
-        morphem.groupby("Metadata_site_id").first()[META_COLS]
-        if "Metadata_Well" in morphem.columns
+        morphem.groupby("Metadata_site_id").first()[available]
+        if available
         else morphem.groupby("Metadata_site_id").first()
     )
     coords = umap2(morphem_med.values, "morphem")

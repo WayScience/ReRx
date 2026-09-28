@@ -269,10 +269,10 @@ recommended shape for production, not just a testing convenience. Declare one
 walltime via Nextflow's `params` section (this project does so via
 `process.time = 30.m` in `conf/alpine.reference.config`).
 
-Do NOT use `ulimit -m` to self-limit the orchestrator's memory: it is not an
-RSS limit on Linux (at best it caps total address space, which the JVM's
-reserved virtual memory trips long before real usage), so it does not protect
-against the ~1.6 GB per-user cgroup cap. Instead:
+Do NOT use `ulimit -m` to self-limit the orchestrator's memory: it is not
+an RSS limit on Linux (Linux does not enforce `RLIMIT_RSS` on modern
+kernels), so it does not
+protect against the ~1.6 GB per-user cgroup cap. Instead:
 
 - cap the Nextflow JVM heap explicitly, well under the cgroup cap, for
   example `export NXF_OPTS='-Xms256m -Xmx1024m'` before launching (Nextflow

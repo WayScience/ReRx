@@ -63,7 +63,7 @@ class _StubModel:
         # only exercise shape bookkeeping here.
         arr = np.asarray(getattr(x, "shape", None) or (1,))
         batch = arr[0] if len(arr) else 1
-        return {"x_norm_clsttoken": np.zeros((batch, self.dim), dtype=np.float32)}
+        return {"x_norm_clstoken": np.zeros((batch, self.dim), dtype=np.float32)}
 
 
 def _stub_embed_fn(

@@ -25,7 +25,7 @@ params.scratch    = params.scratch    ?: System.getenv('RERX_SCRATCH')
 params.source     = params.source     ?: System.getenv('RERX_SOURCE')
 params.sif        = params.sif        ?: System.getenv('RERX_SIF')
 params.morphem_sif = params.morphem_sif ?: System.getenv('RERX_MORPHEM_SIF')
-params.shard_size = '24'
+params.shard_size = params.shard_size ?: '24'
 params.pilot_scale = params.pilot_scale ?: '1'
 
 def rerxEnv = """
