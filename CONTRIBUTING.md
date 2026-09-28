@@ -8,7 +8,7 @@ If you are stuck, please feel free to ask any questions or ask for help.
 
 ## Code of conduct
 
-This project is governed by our [code of conduct](code_of_conduct.md). By participating, you are expected to uphold this code.
+This project is governed by our [code of conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to community leaders responsible for enforcement.
 Please open a [new security advisory notice](https://github.com/WayScience/ReRx/security/advisories/new) (using defaults or "n/a" where unable to fill in the form) to privately notify us of any incidents of this nature.
@@ -33,7 +33,7 @@ Pre-commit can work alongside your local [git with git-hooks](https://pre-commit
 After [installing pre-commit](https://pre-commit.com/#installation) within your development environment, the following command also can perform the same checks within your local development environment:
 
 ```sh
-% pre-commit run --all-files
+pre-commit run --all-files
 ```
 
 We use these same checks within our automated tests which are managed by [GitHub Actions workflows](https://docs.github.com/en/actions/using-workflows).
@@ -48,7 +48,7 @@ We recommend testing your work before opening pull requests with proposed change
 You can run pytest on your work using the following example:
 
 ```sh
-% uv run pytest
+uv run pytest
 ```
 
 ## Making changes to this repository

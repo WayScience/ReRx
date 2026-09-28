@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: code-review-and-quality description: Runs a multi-axis quality review before merge. Use after implementation and before considering work complete.
+## name: code-review-and-quality description: 'Runs a multi-axis quality review before merge. Use after implementation and before considering work complete.'
 
 # Code Review and Quality
 

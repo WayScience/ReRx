@@ -55,11 +55,11 @@ def main() -> None:
         HERE / "feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
     )
     emb = pd.read_parquet(HERE / "recursion_site_embeddings.parquet")
-    mor = pd.read_parquet(HERE / "morphem_feature_selected_sample.parquet")
+    morphem = pd.read_parquet(HERE / "morphem_feature_selected_sample.parquet")
 
     cpfeat = [c for c in cp.columns if c.startswith(CP_PREFIXES)]
     embfeat = [c for c in emb.columns if c.startswith("feature_")]
-    morfeat = [c for c in mor.columns if c.startswith("Morphem_")]
+    morphemfeat = [c for c in morphem.columns if c.startswith("Morphem_")]
 
     # Site keys in the site_id format the reports already use:
     # "HRCE-1_25_<well>_<site>"
@@ -68,22 +68,18 @@ def main() -> None:
         + "_"
         + cp["Metadata_Plate"].astype(str)
         + "_"
-        + cp["Metadata_Well"]
+        + cp["Metadata_Well"].astype(str)
         + "_"
         + cp["Metadata_Site"].astype(str)
     )
 
     cp_med = med_by_site(cp, cpfeat, cp_site)
-    mor_med = med_by_site(mor, morfeat, mor["Metadata_site_id"])
+    morphem_med = med_by_site(morphem, morphemfeat, morphem["Metadata_site_id"])
     emb = emb.set_index("site_id")
 
     # CellProfiler: per-cell metadata for the first cell of each site
     # (well / perturbation / control are constant within a site).
-    site_meta = (
-        cp.assign(_s=cp_site.values)
-        .groupby("_s")
-        .first()[META_COLS]
-    )
+    site_meta = cp.assign(_s=cp_site.values).groupby("_s").first()[META_COLS]
 
     payload: dict = {}
 
@@ -114,22 +110,21 @@ def main() -> None:
         for i, s in enumerate(common)
     ]
 
-    mor_meta = (
-        mor.groupby("Metadata_site_id")
-        .first()[META_COLS]
-        if "Metadata_Well" in mor.columns
-        else mor.groupby("Metadata_site_id").first()
+    morphem_meta = (
+        morphem.groupby("Metadata_site_id").first()[META_COLS]
+        if "Metadata_Well" in morphem.columns
+        else morphem.groupby("Metadata_site_id").first()
     )
-    coords = umap2(mor_med.values, "morphem")
+    coords = umap2(morphem_med.values, "morphem")
     payload["morphem_umap"] = []
-    for i, s in enumerate(mor_med.index):
-        row = mor_meta.loc[s]
+    for i, s in enumerate(morphem_med.index):
+        row = morphem_meta.loc[s]
         ctrl = (
             row["Metadata_rxrx_control_type"]
-            if "Metadata_rxrx_control_type" in mor.columns
+            if "Metadata_rxrx_control_type" in morphem.columns
             else ""
         )
-        well = row["Metadata_Well"] if "Metadata_Well" in mor.columns else ""
+        well = row["Metadata_Well"] if "Metadata_Well" in morphem.columns else ""
         pert = row.get("Metadata_perturbation", "")
         payload["morphem_umap"].append(
             {

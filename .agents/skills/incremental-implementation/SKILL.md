@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: incremental-implementation description: Delivers changes in thin, verifiable slices. Use when a task spans multiple files or feels too large for one safe change.
+## name: incremental-implementation description: 'Delivers changes in thin, verifiable slices. Use when a task spans multiple files or feels too large for one safe change.'
 
 # Incremental Implementation
 

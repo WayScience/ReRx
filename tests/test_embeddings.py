@@ -4,6 +4,7 @@ Tests for the embeddings module.
 
 import io
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
@@ -60,12 +61,22 @@ def test_download_embeddings_is_idempotent(
     calls = []
 
     class FakeResponse:
-        content = b"fake zip bytes"
+        def __init__(self) -> None:
+            self._chunks = [b"fake ", b"zip bytes"]
+
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
 
         def raise_for_status(self) -> None:
             return None
 
-    def fake_get(url, timeout):
+        def iter_content(self, chunk_size: int) -> Iterator[bytes]:
+            yield from self._chunks
+
+    def fake_get(url, timeout, stream=False):
         calls.append(url)
         return FakeResponse()
 

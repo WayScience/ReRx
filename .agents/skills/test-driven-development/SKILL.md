@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: test-driven-development description: Drives development with tests first. Use when implementing logic, fixing bugs, or changing behavior that must be proven.
+## name: test-driven-development description: 'Drives development with tests first. Use when implementing logic, fixing bugs, or changing behavior that must be proven.'
 
 # Test-Driven Development
 

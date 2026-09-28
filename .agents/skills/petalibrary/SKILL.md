@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: petalibrary description: Use before mounting, transferring to or from, or reasoning about CU Boulder/Anschutz PetaLibrary storage from local machines or Alpine, including sshfs, Globus, rclone, quotas, access paths, and data-handling rules.
+## name: petalibrary description: 'Use before mounting, transferring to or from, or reasoning about CU Boulder/Anschutz PetaLibrary storage from local machines or Alpine, including sshfs, Globus, rclone, quotas, access paths, and data-handling rules.'
 
 # PetaLibrary Skill
 
@@ -334,8 +334,12 @@ Verify and use:
 ```bash
 rclone listremotes
 rclone ls <remote>:
-rclone sync --progress <remote>:<source-path> <local-folder>
+rclone copy --progress <remote>:<source-path> <local-folder>
 ```
+
+(`copy`, not `sync`: `rclone sync` deletes destination-only files, so a
+typo in the source path would wipe the local copy. Sync is only for
+deliberate mirror-style uploads, never for downloads.)
 
 Can be wrapped in a batch job, e.g.:
 
@@ -353,7 +357,7 @@ Can be wrapped in a batch job, e.g.:
 #SBATCH --mail-user=<user>@cuanschutz.edu
 
 module load rclone
-rclone sync --progress <remote>:<source-path> <local-folder>
+rclone copy --progress <remote>:<source-path> <local-folder>
 ```
 
 Note the deck's example partition (`amilan`) is a predecessor/sibling

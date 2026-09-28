@@ -14,10 +14,10 @@ count against it.
 
 ## What we found
 
-| Device | Throughput | Full pilot (33,330 cells) |
-|--------|-----------|---------------------------|
-| CPU (M4 Pro) | ~29.6 cells/sec | ~19 minutes |
-| GPU / MPS (M4 Pro) | ~73.5 cells/sec | ~7.6 minutes |
+| Device             | Throughput      | Full pilot (33,330 cells) |
+| ------------------ | --------------- | ------------------------- |
+| CPU (M4 Pro)       | ~29.6 cells/sec | ~19 minutes               |
+| GPU / MPS (M4 Pro) | ~73.5 cells/sec | ~7.6 minutes              |
 
 - **MorphEm runs fine on CPU.** This matches the model's own reference code,
   which falls back to CPU when no CUDA device is found.
@@ -50,6 +50,8 @@ similar 4.x) when building the MorphEm container.
 
 ## Reproduce
 
-    .venv/bin/python benchmark.py 200 32
+```
+.venv/bin/python benchmark.py 200 32
+```
 
 Artifacts: `benchmark.py`, `sample_crops.parquet` (4,994 real pilot cells).

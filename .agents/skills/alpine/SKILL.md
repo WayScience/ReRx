@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: alpine description: Use before changing, testing, or scaling formascute on CURC Alpine, especially for Nextflow, Slurm submission, Persistence1, Python runtimes, Apptainer/Singularity, uv environments, queue limits, or Alpine filesystem behavior.
+## name: alpine description: 'Use before changing, testing, or scaling formascute on CURC Alpine, especially for Nextflow, Slurm submission, Persistence1, Python runtimes, Apptainer/Singularity, uv environments, queue limits, or Alpine filesystem behavior.'
 
 # Alpine Skill
 
@@ -267,14 +267,20 @@ This direct `make run`-in-`screen`/`tmux` pattern — a plain bash script run
 directly on `Persistence1`, not a Slurm-submitted coordinator — is CURC's own
 recommended shape for production, not just a testing convenience. Declare one
 walltime via Nextflow's `params` section (this project does so via
-`process.time = 30.m` in `conf/alpine.reference.config`). Self-limit the
-orchestrator's own memory with `ulimit -m` before launching, set *below* the
-measured hard cgroup cap of `~1.6 GB` (e.g. `ulimit -m 1400000`, in KB) rather
-than a higher value — a `ulimit` set above the enforced cgroup cap does
-nothing to prevent an abrupt kill; it only helps if it triggers first. See
-Orchestrator Monitoring for how the `~1.6 GB` number was measured, and
-reconcile any different value CURC suggests against that measurement rather
-than assuming it's already consistent.
+`process.time = 30.m` in `conf/alpine.reference.config`).
+
+Do NOT use `ulimit -m` to self-limit the orchestrator's memory: it is not an
+RSS limit on Linux (at best it caps total address space, which the JVM's
+reserved virtual memory trips long before real usage), so it does not protect
+against the ~1.6 GB per-user cgroup cap. Instead:
+
+- cap the Nextflow JVM heap explicitly, well under the cgroup cap, for
+  example `export NXF_OPTS='-Xms256m -Xmx1024m'` before launching (Nextflow
+  reads `NXF_OPTS` for JVM arguments), and
+- monitor real usage against the cap during the run:
+  `ps -o rss= -p $(pgrep -f 'nextflow' | head -1)` periodically, or watch
+  `top -u "$USER"` (see Orchestrator Monitoring for how the `~1.6 GB` cap was
+  measured; reconcile any value CURC suggests against that measurement).
 
 Validated smoke path from a clone on Alpine shared scratch:
 
@@ -931,11 +937,12 @@ Answered:
   the required Python version, calls conda harder to maintain long-term, and
   has no strong view on `uv` specifically. Both paths are now validated
   end-to-end (see Feature-Extraction Workload Runtime).
-- `Persistence1` RAM: monitor via `top`/`htop -u $USER`; per-user cgroups cap
+- `Persistence1` RAM: monitor via `top`/`htop -u "$USER"`; per-user cgroups cap
   RAM/CPU on that shared VM, and the orchestrator risks cancellation if it
   exceeds the limit for too long. Now quantified exactly (see Orchestrator
-  Monitoring); CURC separately suggested a `ulimit -m` self-limit, reconciled
-  against the measured cap under Production Submission Shape.
+  Monitoring); cap the JVM heap via `NXF_OPTS` and watch RSS against the
+  measured cap (see Production Submission Shape — `ulimit -m` is not an RSS
+  limit and must not be used for this).
 - Use `tmux`/`screen` on `Persistence1` for long-lived runs, running a plain
   bash script directly rather than submitting the coordinator as a Slurm job:
   confirmed as the right production shape, not just a testing convenience.
@@ -956,10 +963,9 @@ Still open:
   institution even uses a tier system analogous to CU Boulder's self-service
   one? Ask that institution's own HPC support directly, not another
   `sacctmgr` probe.
-- Reconcile CURC's suggested `ulimit -m` value for the Persistence1
-  orchestrator against this project's own directly-measured hard cgroup cap —
-  a suggested value higher than the enforced limit doesn't actually protect
-  against it.
+- Cap the Nextflow JVM heap via `NXF_OPTS` (set under the measured hard cgroup
+  cap) and log orchestrator RSS during longer runs — `ulimit -m` is not an
+  RSS limit and does not protect against the enforced cap.
 - Request any reference orchestrator script CURC has offered but not yet
   provided — worth diffing against `bin/formascute`'s generated coordinator
   scripts.

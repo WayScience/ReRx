@@ -13,14 +13,18 @@
  * RERX_* env vars the driver reads (os.environ) before invoking it.
  */
 
-params.run_id     = 'pilot-dev'
-params.repo       = '/scratch/alpine/dabu57888@xsede.org/rerx/ReRx'
-params.python     = '/scratch/alpine/dabu57888@xsede.org/rerx/ReRx/.venv/bin/python'
-params.run_dir    = params.run_dir ?: "/pl/active/koala/ReRx/runs/${params.run_id}"
-params.scratch    = '/scratch/alpine/dabu57888@xsede.org/rerx'
-params.source     = '/pl/active/koala/ReRx/source'
-params.sif        = '/scratch/alpine/dabu57888@xsede.org/rerx/cellprofiler.sif'
-params.morphem_sif = '/scratch/alpine/dabu57888@xsede.org/rerx/morphem.sif'
+// Personal paths and allocation names are deliberately NOT defaulted
+// here: pass them via the environment (scripts/alpine_launch.sh
+// requires RERX_ROOT and RERX_PETA_ROOT) or as explicit CLI params
+// (--repo, --python, --scratch, --source, --sif, --morphem_sif).
+params.run_id     = params.run_id ?: 'pilot-dev'
+params.repo       = params.repo       ?: System.getenv('RERX_REPO')
+params.python     = params.python     ?: System.getenv('RERX_PYTHON')
+params.run_dir    = params.run_dir    ?: System.getenv('RERX_RUN_DIR')
+params.scratch    = params.scratch    ?: System.getenv('RERX_SCRATCH')
+params.source     = params.source     ?: System.getenv('RERX_SOURCE')
+params.sif        = params.sif        ?: System.getenv('RERX_SIF')
+params.morphem_sif = params.morphem_sif ?: System.getenv('RERX_MORPHEM_SIF')
 params.shard_size = '24'
 params.pilot_scale = params.pilot_scale ?: '1'
 

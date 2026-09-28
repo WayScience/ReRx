@@ -36,6 +36,7 @@ scripts.rerx = "rerx.cli:trigger"
 dev = [
   "coverage[toml]>=7.10.6",
   "poethepoet>=0.34",
+  "pre-commit>=4",
   "pytest>=8.3.5",
   "pytest-cov>=6.2.1",
   "ty>=0.0.84",

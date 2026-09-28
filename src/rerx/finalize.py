@@ -125,12 +125,7 @@ def finalize_plate(  # noqa: PLR0913
     annotated = add_perturbation_column(annotated)
 
     normalized_path = (
-        run_dir
-        / "profiles"
-        / profiler
-        / "normalized"
-        / part_dir
-        / "profiles.parquet"
+        run_dir / "profiles" / profiler / "normalized" / part_dir / "profiles.parquet"
     )
     normalized = _normalize_profiles(annotated, normalized_path)
 
@@ -167,6 +162,7 @@ def finalize_plate(  # noqa: PLR0913
                 buscar_dest,
                 experiment=experiment,
                 plate=plate,
+                profiler=profiler,
                 config=buscar_config,
             )
         except (ValueError, ZeroDivisionError) as exc:

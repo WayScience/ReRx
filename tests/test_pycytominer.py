@@ -280,3 +280,47 @@ def test_features_argument_no_features_defaults_infer() -> None:
 
     profiles = pd.DataFrame({"Metadata_cell_id": ["a"]})
     assert _features_argument(profiles) == "infer"
+
+
+def test_rxrx_control_type_handles_missing_value_sentinels() -> None:
+    # Real RxRx19a metadata mixes None, NaN, pd.NA, and "" for
+    # "no treatment"; every sentinel must read as untreated, not raise
+    # (pd.NA == "" is pd.NA, so truthiness and == "" checks are unsafe).
+    for missing in (pd.NA, float("nan"), "", None):
+        row = pd.Series(
+            {"disease_condition": "Active SARS-CoV-2", "treatment": missing}
+        )
+        assert rxrx_control_type(row) == RXRX_CONTROL_ACTIVE_UNTREATED
+
+
+def test_rxrx_control_type_falls_back_to_prefixed_when_plain_missing() -> None:
+    # A missing (pd.NA) plain column must fall back to the
+    # Metadata_-prefixed one instead of raising on truthiness.
+    row = pd.Series(
+        {
+            "disease_condition": pd.NA,
+            "treatment": pd.NA,
+            "Metadata_disease_condition": "Mock",
+            "Metadata_treatment": None,
+        }
+    )
+    assert rxrx_control_type(row) == RXRX_CONTROL_MOCK
+
+
+def test_add_perturbation_column_missing_conc_sentinels() -> None:
+    # pd.NA / NaN concentrations must read as "no concentration", not
+    # leak str(<NA>) into the perturbation label.
+    df = pd.DataFrame(
+        {
+            "Metadata_treatment": [
+                "Remdesivir (GS-5734)",
+                "Remdesivir (GS-5734)",
+            ],
+            "Metadata_treatment_conc": [pd.NA, float("nan")],
+        }
+    )
+    out = add_perturbation_column(df)
+    assert out["Metadata_perturbation"].tolist() == [
+        "Remdesivir (GS-5734)",
+        "Remdesivir (GS-5734)",
+    ]

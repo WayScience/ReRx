@@ -7,6 +7,8 @@ match CP). The CP space holds ~572 columns; MorphEm adds up to 1,552
 ``Morphem_``-prefixed features on the same cells.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -144,3 +146,76 @@ def test_fuse_warns_on_partial_overlap() -> None:
         warnings.simplefilter("always")
         fuse_features(cp, me)
     assert any("cells dropped" in str(w.message) for w in caught)
+
+
+def test_pair_fused_partitions_matches_by_relative_path() -> None:
+    # The driver pairs finalized CP and MorphEm files by their
+    # experiment/plate partition path, not by sorted order.
+    from rerx.fuse import pair_fused_partitions
+
+    cp_paths = [
+        Path(
+            "profiles/cellprofiler/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+        ),
+        Path(
+            "profiles/cellprofiler/feature_selected/experiment=HRCE-2/plate=3/profiles.parquet"
+        ),
+    ]
+    me_paths = [
+        Path(
+            "profiles/morphem/feature_selected/experiment=HRCE-2/plate=3/profiles.parquet"
+        ),
+        Path(
+            "profiles/morphem/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+        ),
+    ]
+    pairs = pair_fused_partitions(cp_paths, me_paths)
+    assert pairs == [
+        (
+            Path(
+                "profiles/cellprofiler/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+            ),
+            Path(
+                "profiles/morphem/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+            ),
+        ),
+        (
+            Path(
+                "profiles/cellprofiler/feature_selected/experiment=HRCE-2/plate=3/profiles.parquet"
+            ),
+            Path(
+                "profiles/morphem/feature_selected/experiment=HRCE-2/plate=3/profiles.parquet"
+            ),
+        ),
+    ]
+
+
+def test_pair_fused_partitions_drops_unmatched() -> None:
+    # Unmatched partitions are skipped (inner behavior), not paired with
+    # an arbitrary file from the other space.
+    from rerx.fuse import pair_fused_partitions
+
+    cp_paths = [
+        Path(
+            "profiles/cellprofiler/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+        ),
+        Path(
+            "profiles/cellprofiler/feature_selected/experiment=HRCE-2/plate=3/profiles.parquet"
+        ),
+    ]
+    me_paths = [
+        Path(
+            "profiles/morphem/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+        ),
+    ]
+    pairs = pair_fused_partitions(cp_paths, me_paths)
+    assert pairs == [
+        (
+            Path(
+                "profiles/cellprofiler/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+            ),
+            Path(
+                "profiles/morphem/feature_selected/experiment=HRCE-1/plate=25/profiles.parquet"
+            ),
+        ),
+    ]

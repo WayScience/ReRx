@@ -17,19 +17,26 @@ From: python:3.11-slim
 
 %post
     # CPU torch wheels first (separate index), then the rest from PyPI.
+    # Versions validated in spikes/001-morphem-cpu-vs-gpu (its .venv):
+    # torch 2.14.0, torchvision 0.29.0, transformers 4.46.3 (5.x breaks
+    # trust_remote_code with all_tied_weights_keys AttributeError).
     pip install --no-cache-dir \
-        torch torchvision \
+        torch==2.14.0 torchvision==0.29.0 \
         --index-url https://download.pytorch.org/whl/cpu
     pip install --no-cache-dir \
         transformers==4.46.3 \
         pillow numpy pandas pyarrow safetensors huggingface_hub
     # Bake the model + custom code into the image at build time.
+    # revision is pinned to the same commit SHA as
+    # rerx.morphem.MORPHEM_MODEL_REVISION so the baked model and any
+    # hub fallback resolve to identical code/weights.
     mkdir -p /opt/morphem/model
     python - <<'PYEOF'
 import os
 from huggingface_hub import snapshot_download
 snapshot_download(
     "CaicedoLab/MorphEm",
+    revision="0e8d58787421f83f975634d72420d85c5dfc9c2c",
     local_dir="/opt/morphem/model",
 )
 print("baked files:", sorted(os.listdir("/opt/morphem/model")))

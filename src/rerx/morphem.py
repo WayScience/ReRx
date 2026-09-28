@@ -42,8 +42,11 @@ import numpy as np
 import pandas as pd
 
 # HuggingFace identifiers for MorphEm (verified in the spike).
+# Revision is pinned to a commit SHA (the `main` branch HEAD at spike
+# time, 2026-05-21), not a moving branch: the container bakes the model
+# at build time and inference must load the identical code/weights.
 MORPHEM_MODEL_ID = "CaicedoLab/MorphEm"
-MORPHEM_MODEL_REVISION = "main"
+MORPHEM_MODEL_REVISION = "0e8d58787421f83f975634d72420d85c5dfc9c2c"
 
 # transformers pin required by MorphEm's trust_remote_code custom model:
 # 5.x raises AttributeError on all_tied_weights_keys (verified in the

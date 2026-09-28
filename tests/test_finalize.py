@@ -2,6 +2,7 @@
 Tests for the finalize module (per-plate batch orchestration).
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -158,3 +159,31 @@ def test_finalize_plate_control_separation_flags_bad_plate(tmp_path: Path) -> No
     assert not result.control_separation.passed
     assert result.buscar is None
     assert result.buscar_skipped_reason is not None
+
+
+def test_finalize_plate_buscar_keeps_profiler_label(tmp_path: Path) -> None:
+    # BUSCAR outputs must carry the profiler the plate was finalized
+    # with (summary filename + "profiler" field), not the default label.
+    raw = _plate_raw_profiles().drop(
+        columns=["_disease_condition", "_treatment", "_treatment_conc"]
+    )
+    result = finalize_plate(
+        raw_profiles=raw,
+        site_metadata=_site_metadata(),
+        run_dir=tmp_path / "run",
+        experiment="HRCE-1",
+        plate="25",
+        profiler="morphem",
+    )
+    assert result.buscar is not None
+    summary_path = (
+        tmp_path
+        / "run"
+        / "buscar"
+        / "morphem"
+        / "experiment=HRCE-1"
+        / "plate=25"
+        / "morphem_summary.json"
+    )
+    assert summary_path.is_file()
+    assert json.loads(summary_path.read_text())["profiler"] == "morphem"

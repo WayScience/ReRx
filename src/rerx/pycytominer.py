@@ -98,6 +98,26 @@ def rename_image_metadata_columns(profiles: pd.DataFrame) -> pd.DataFrame:
     return profiles.rename(columns=present)
 
 
+def _is_missing(value: object) -> bool:
+    """
+    True when a metadata cell value means "not present".
+
+    Covers ``None``, ``float("nan")``, ``pd.NA``, and empty/whitespace
+    strings. Direct comparisons are unsafe for this (``pd.NA == ""``
+    evaluates to ``pd.NA``, and ``bool(pd.NA)`` raises), so every
+    treatment/disease "is it untreated?" decision goes through here.
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        # Non-scalar or exotic dtype: treat as present.
+        return False
+
+
 def rxrx_control_type(row: pd.Series) -> str:
     """
     RxRx19a-native control classification for one metadata row.
@@ -115,9 +135,13 @@ def rxrx_control_type(row: pd.Series) -> str:
         :data:`RXRX_CONTROL_ACTIVE_UNTREATED`, or
         :data:`RXRX_CONTROL_TREATED`.
     """
-    disease = row.get("disease_condition") or row.get("Metadata_disease_condition")
-    treatment = row.get("treatment") or row.get("Metadata_treatment")
-    untreated = treatment is None or (isinstance(treatment, float)) or treatment == ""
+    disease = row.get("disease_condition")
+    if _is_missing(disease):
+        disease = row.get("Metadata_disease_condition")
+    treatment = row.get("treatment")
+    if _is_missing(treatment):
+        treatment = row.get("Metadata_treatment")
+    untreated = _is_missing(treatment)
     if disease == DISEASE_CONDITION_MOCK:
         return RXRX_CONTROL_MOCK
     if disease == DISEASE_CONDITION_UV:
@@ -268,13 +292,9 @@ def add_perturbation_column(annotated: pd.DataFrame) -> pd.DataFrame:
 
     def perturbation(row: pd.Series) -> str:
         treatment = row.get(treatment_col)
-        untreated = treatment is None or isinstance(treatment, float) or treatment == ""
-        if not untreated:
+        if not _is_missing(treatment):
             conc = row.get(conc_col)
-            conc_is_missing = conc is None or (
-                isinstance(conc, float) and pd.isna(conc)
-            )
-            conc_str = "" if conc_is_missing else str(conc)
+            conc_str = "" if _is_missing(conc) else str(conc)
             return f"{treatment}__{conc_str}" if conc_str else str(treatment)
         # Untreated: keep mock/uv/active_untreated distinguishable when the
         # RxRx control-type column is available (plan.md section 19 --

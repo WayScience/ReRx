@@ -22,9 +22,7 @@ from rerx import morphem
 
 def _jpeg_crop(size: int = 96, value: int = 128) -> bytes:
     """One grayscale JPEG crop at a fixed pixel value."""
-    img = Image.fromarray(
-        np.full((size, size), value, dtype=np.uint8), mode="L"
-    )
+    img = Image.fromarray(np.full((size, size), value, dtype=np.uint8), mode="L")
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     return buf.getvalue()
@@ -65,11 +63,7 @@ class _StubModel:
         # only exercise shape bookkeeping here.
         arr = np.asarray(getattr(x, "shape", None) or (1,))
         batch = arr[0] if len(arr) else 1
-        return {
-            "x_norm_clsttoken": np.zeros(
-                (batch, self.dim), dtype=np.float32
-            )
-        }
+        return {"x_norm_clsttoken": np.zeros((batch, self.dim), dtype=np.float32)}
 
 
 def _stub_embed_fn(
@@ -94,6 +88,11 @@ def test_morphem_feature_names_layout() -> None:
 
 def test_morphem_constants() -> None:
     assert morphem.MORPHEM_MODEL_ID == "CaicedoLab/MorphEm"
+    # Pinned commit SHA (not a moving branch): build-time and inference
+    # model code must resolve to the identical revision.
+    assert morphem.MORPHEM_MODEL_REVISION == (
+        "0e8d58787421f83f975634d72420d85c5dfc9c2c"
+    )
     assert morphem.MORPHEM_TRANSFORMERS_VERSION == "4.46.3"
     assert morphem.MORPHEM_CHANNEL_COLS == [
         "crop_w1_jpeg",
@@ -140,9 +139,7 @@ def test_write_morphem_profiles_rejects_row_mismatch(tmp_path: Path) -> None:
     crops = _crop_rows(3)
     features = np.zeros((2, 5 * 384), dtype=np.float32)
     with pytest.raises(ValueError, match="does not match"):
-        morphem.write_morphem_profiles(
-            crops, features, tmp_path / "bad.parquet"
-        )
+        morphem.write_morphem_profiles(crops, features, tmp_path / "bad.parquet")
 
 
 def test_write_morphem_profiles_rejects_bad_channel_count(
@@ -151,9 +148,7 @@ def test_write_morphem_profiles_rejects_bad_channel_count(
     crops = _crop_rows(2)
     features = np.zeros((2, 383), dtype=np.float32)  # not divisible by 5
     with pytest.raises(ValueError, match="divisible"):
-        morphem.write_morphem_profiles(
-            crops, features, tmp_path / "bad.parquet"
-        )
+        morphem.write_morphem_profiles(crops, features, tmp_path / "bad.parquet")
 
 
 def test_embed_shard_with_stub_model(tmp_path: Path) -> None:
@@ -234,9 +229,7 @@ def _torch_available() -> bool:
         return False
 
 
-@pytest.mark.skipif(
-    _torch_available(), reason="torch installed; container-only test"
-)
+@pytest.mark.skipif(_torch_available(), reason="torch installed; container-only test")
 def test_crops_to_tensor_import_error_without_torch() -> None:
     """On the torch-free host, crops_to_tensor must raise ImportError
     (torch is only installed inside containers/morphem.def)."""

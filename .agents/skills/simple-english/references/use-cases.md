@@ -23,7 +23,7 @@ Mode: strict-leaning procedural. This is STE's home turf — an on-call runbook 
 
 ## Incident reports and postmortems
 
-Mode: descriptive. Simple past only — a timeline in present perfect ("we have identified...") hides when things happened.
+Mode: descriptive. Use simple past for timeline events. Use simple present only for facts that remain true now. A timeline in present perfect ("we have identified...") hides when things happened.
 
 > **Before:** We have identified an issue that may have impacted some users' ability to access the service.
 > **After:** Between 14:02 and 14:31 UTC, 12% of requests failed. A deploy at 14:00 removed the cache warmup step.

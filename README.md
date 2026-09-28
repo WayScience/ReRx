@@ -27,8 +27,9 @@ The pipeline has eight stages, in order:
 1. **Crops** — cut a JPEG crop of each cell from each of the five
    channels, for visual QC and embedding models.
 1. **MorphEm** — run the MorphEm vision transformer over each cell's
-   five-channel crop to get a 1,560-number deep-learning feature
-   vector per cell. Runs in its own Apptainer container, on CPU.
+   five-channel crop to get a 1,920-number deep-learning feature
+   vector per cell (5 channels × 384 embedding dims). Runs in its own
+   Apptainer container, on CPU.
 1. **Finalize (per plate, per profiler)** — annotate, normalize, and
    select features with Pycytominer for both CellProfiler and MorphEm
    profiles, run a biological QC gate, and run BUSCAR reversal
@@ -106,8 +107,8 @@ during the finalize stage:
   their own value (so their differences stay visible). A dosed
   treatment becomes `<treatment>__<concentration>`, for example
   `Remdesivir (GS-5734)__1.0`.
-- `Metadata_buscar_state` — `healthy` for mock, `disease` for every
-  challenged well (UV, active-untreated, treated).
+- `Metadata_buscar_state` — `Mock` for mock wells, `Active SARS-CoV-2`
+  for every challenged well (UV, active-untreated, treated).
 
 BUSCAR writes two files per plate:
 

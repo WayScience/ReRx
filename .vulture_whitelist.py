@@ -20,3 +20,10 @@ revision
 capture_output
 check
 text
+
+# tests/test_embeddings.py + tests/test_metadata.py fakes: signatures
+# must match requests.get / Response.iter_content for the monkeypatch
+# and streaming protocol to work, even though the fakes don't read
+# these.
+chunk_size
+stream

@@ -131,9 +131,18 @@ def download_metadata(dest: Path, url: str = METADATA_URL, timeout: int = 300) -
     dest.mkdir(parents=True, exist_ok=True)
     zip_path = dest / "RxRx19a-metadata.zip"
     if not zip_path.exists():
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
-        zip_path.write_bytes(response.content)
+        # Stream to a .part temp file and only replace the final ZIP
+        # after the full body is written (same pattern as
+        # download_embeddings), so a mid-download failure never leaves
+        # a truncated ZIP that later calls would treat as complete.
+        tmp = zip_path.with_suffix(".part")
+        with requests.get(url, timeout=timeout, stream=True) as response:
+            response.raise_for_status()
+            with tmp.open("wb") as fh:
+                for chunk in response.iter_content(chunk_size=1 << 20):
+                    if chunk:
+                        fh.write(chunk)
+        tmp.replace(zip_path)
     csv_path = dest / "metadata.csv"
     if not csv_path.exists():
         with zipfile.ZipFile(zip_path) as zf:

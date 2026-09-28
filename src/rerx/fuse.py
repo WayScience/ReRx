@@ -71,22 +71,57 @@ def fuse_features(cp: pd.DataFrame, morphem: pd.DataFrame) -> pd.DataFrame:
     # differently, e.g. Metadata_site_id vs capitalized CP columns).
     # A colliding feature column is still an error -- it would silently
     # shadow a CP feature.
-    drop_cols = [
-        c
-        for c in morphem.columns
-        if c != _KEY and c.startswith("Metadata_")
-    ]
+    drop_cols = [c for c in morphem.columns if c != _KEY and c.startswith("Metadata_")]
     collisions = [c for c in morphem.columns if c != _KEY and c in cp_cols]
     if collisions and not set(collisions).issubset(set(drop_cols)):
-        raise ValueError(
-            f"MorphEm columns collide with CP columns: {collisions[:5]}"
-        )
+        raise ValueError(f"MorphEm columns collide with CP columns: {collisions[:5]}")
 
     morphem_block = morphem[
         [c for c in morphem.columns if c == _KEY or c.startswith("Morphem_")]
     ]
     fused = cp.merge(morphem_block, on=_KEY, how="inner", validate="one_to_one")
     return fused.reset_index(drop=True)
+
+
+def pair_fused_partitions(
+    cp_paths: list[Path],
+    morphem_paths: list[Path],
+) -> list[tuple[Path, Path]]:
+    """
+    Match finalized CellProfiler and MorphEm files by experiment/plate.
+
+    Both spaces write one ``profiles.parquet`` per
+    ``experiment=<e>/plate=<p>`` partition; pairing by that relative
+    partition path (instead of sorted file order) keeps every plate's
+    CP table fused with its own MorphEm table. Unmatched partitions on
+    either side are skipped, matching ``fuse_features``' inner-join
+    behavior.
+
+    Parameters
+    ----------
+    cp_paths : list[Path]
+        Finalized CellProfiler partition files.
+    morphem_paths : list[Path]
+        Finalized MorphEm partition files.
+
+    Returns
+    -------
+    list[tuple[Path, Path]]
+        ``(cp_path, morphem_path)`` pairs sharing a partition, in
+        ``cp_paths`` order.
+    """
+
+    def partition_key(path: Path) -> str:
+        parts = Path(path).parts
+        # .../<profiler>/feature_selected/experiment=<e>/plate=<p>/profiles.parquet
+        return "/".join(parts[-3:-1])
+
+    morphem_by_key = {partition_key(p): p for p in morphem_paths}
+    return [
+        (cp_path, morphem_by_key[key])
+        for cp_path in cp_paths
+        if (key := partition_key(cp_path)) in morphem_by_key
+    ]
 
 
 # Fixed label for the fused table: the common, simple fusion approach
@@ -129,12 +164,8 @@ def fusion_metadata(
         JSON-serializable metadata describing the fusion: kind, join
         key, sources, row count, and per-source feature counts.
     """
-    cp_features = [
-        c for c in fused.columns if c.startswith(_CP_FEATURE_PREFIXES)
-    ]
-    morphem_features = [
-        c for c in fused.columns if c.startswith(_MORPHEM_PREFIX)
-    ]
+    cp_features = [c for c in fused.columns if c.startswith(_CP_FEATURE_PREFIXES)]
+    morphem_features = [c for c in fused.columns if c.startswith(_MORPHEM_PREFIX)]
     return {
         "kind": FUSION_KIND,
         "layout": FUSED_LAYOUT,

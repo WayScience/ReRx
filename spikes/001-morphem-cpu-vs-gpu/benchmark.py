@@ -13,22 +13,28 @@ Usage:
 import io
 import sys
 import time
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 from PIL import Image
+from torch import nn
 from torchvision import transforms as v2
 from transformers import AutoModel
 
 CHANNEL_COLS = [f"crop_w{i}_jpeg" for i in (1, 2, 3, 4, 5)]
 
+# Model-card constants (SaturationNoiseInjector / PerImageNormalize).
+SATURATED_PIXEL_VALUE = 255
+CHANNEL_FIRST_DIM = 3
+ARG_RUN_COUNT = 2
+
 
 class SaturationNoiseInjector(nn.Module):
     """Exact transform from the MorphEm model card."""
 
-    def __init__(self, low=200, high=255):
+    def __init__(self, low: float = 200, high: float = 255) -> None:
         super().__init__()
         self.low = low
         self.high = high
@@ -36,9 +42,9 @@ class SaturationNoiseInjector(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         channel = x[0].clone()
         noise = torch.empty_like(channel).uniform_(self.low, self.high)
-        mask = (channel == 255).float()
+        mask = (channel == SATURATED_PIXEL_VALUE).float()
         noise_masked = noise * mask
-        channel[channel == 255] = 0
+        channel[channel == SATURATED_PIXEL_VALUE] = 0
         channel = channel + noise_masked
         x[0] = channel
         return x
@@ -47,7 +53,7 @@ class SaturationNoiseInjector(nn.Module):
 class PerImageNormalize(nn.Module):
     """Exact transform from the MorphEm model card."""
 
-    def __init__(self, eps=1e-7):
+    def __init__(self, eps: float = 1e-7) -> None:
         super().__init__()
         self.eps = eps
         self.instance_norm = nn.InstanceNorm2d(
@@ -55,7 +61,7 @@ class PerImageNormalize(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.dim() == 3:
+        if x.dim() == CHANNEL_FIRST_DIM:
             x = x.unsqueeze(0)
         x = self.instance_norm(x)
         if x.shape[0] == 1:
@@ -84,7 +90,11 @@ def load_crops(parquet_path: str, n_cells: int) -> torch.Tensor:
 
 
 def run_inference(
-    model, images: torch.Tensor, device: str, batch_size: int, warmup: bool = True
+    model: Any,  # noqa: ANN401
+    images: torch.Tensor,
+    device: str,
+    batch_size: int,
+    warmup: bool = True,
 ) -> tuple[float, np.ndarray]:
     """
     Run MorphEm's Bag-of-Channels inference over `images`, batched.
@@ -148,7 +158,7 @@ def run_inference(
 
 def main() -> None:
     n_cells = int(sys.argv[1]) if len(sys.argv) > 1 else 200
-    batch_size = int(sys.argv[2]) if len(sys.argv) > 2 else 32
+    batch_size = int(sys.argv[ARG_RUN_COUNT]) if len(sys.argv) > ARG_RUN_COUNT else 32
 
     print(f"Loading {n_cells} real pilot crops (5 channels each)...")
     t0 = time.perf_counter()
@@ -168,13 +178,16 @@ def main() -> None:
     for device in devices:
         print(f"\n--- Running on {device} (batch_size={batch_size}) ---")
         elapsed, features = run_inference(model, images, device, batch_size)
-        cells_per_sec = n_cells / elapsed
+        # Throughput reflects the rows actually loaded (load_crops may
+        # return fewer than the requested n_cells).
+        loaded_cells = images.shape[0]
+        cells_per_sec = loaded_cells / elapsed
         results[device] = {
             "elapsed_s": elapsed,
             "cells_per_sec": cells_per_sec,
             "feature_shape": features.shape,
         }
-        print(f"  {n_cells} cells x 5 channels in {elapsed:.2f}s")
+        print(f"  {loaded_cells} cells x 5 channels in {elapsed:.2f}s")
         print(f"  {cells_per_sec:.2f} cells/sec")
         print(f"  output feature shape: {features.shape}")
 

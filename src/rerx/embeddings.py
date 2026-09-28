@@ -79,10 +79,15 @@ def download_embeddings(
     cache_root.mkdir(parents=True, exist_ok=True)
     zip_path = cache_root / ZIP_NAME
     if not zip_path.exists():
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
+        # Stream to the .part temp file instead of buffering the whole
+        # body in memory; the final path only appears once complete.
         tmp = zip_path.with_suffix(".part")
-        tmp.write_bytes(response.content)
+        with requests.get(url, timeout=timeout, stream=True) as response:
+            response.raise_for_status()
+            with tmp.open("wb") as fh:
+                for chunk in response.iter_content(chunk_size=1 << 20):
+                    if chunk:
+                        fh.write(chunk)
         tmp.rename(zip_path)
     return zip_path, sha256_file(zip_path)
 

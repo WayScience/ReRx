@@ -424,25 +424,39 @@ def cmd_finalize() -> None:
         # Fused output: early feature-concatenation fusion of the two
         # finalized spaces on Metadata_cell_id (see rerx.fuse). Labeled
         # in profiles/fused/fusion.json ("what kind of fused").
-        from rerx.fuse import fuse_features, write_fused_profiles
+        from rerx.fuse import (
+            fuse_features,
+            pair_fused_partitions,
+            write_fused_profiles,
+        )
 
         cp_selected = sorted(
-            (RUN_DIR / "profiles" / "cellprofiler" / "feature_selected")
-            .glob("*/*/*.parquet")
+            (RUN_DIR / "profiles" / "cellprofiler" / "feature_selected").glob(
+                "*/*/*.parquet"
+            )
         )
         morphem_selected = sorted(
-            (RUN_DIR / "profiles" / "morphem" / "feature_selected")
-            .glob("*/*/*.parquet")
+            (RUN_DIR / "profiles" / "morphem" / "feature_selected").glob(
+                "*/*/*.parquet"
+            )
         )
         if cp_selected and morphem_selected:
-            fused = fuse_features(
-                pd.read_parquet(cp_selected[0]),
-                pd.read_parquet(morphem_selected[0]),
+            # Pair each plate's CP table with its own MorphEm table by
+            # experiment/plate partition (not sorted-file order), and
+            # fuse every shared pair; unmatched partitions are skipped
+            # (inner-join behavior, same as fuse_features itself).
+            pairs = pair_fused_partitions(cp_selected, morphem_selected)
+            fused = pd.concat(
+                [
+                    fuse_features(pd.read_parquet(cp_path), pd.read_parquet(me_path))
+                    for cp_path, me_path in pairs
+                ],
+                ignore_index=True,
             )
             fused_paths = write_fused_profiles(fused, RUN_DIR)
             _log(
-                f"fused: {len(fused)} cells x {fused.shape[1]} cols -> "
-                f"{len(fused_paths)} partition(s)"
+                f"fused: {len(fused)} cells x {fused.shape[1]} cols from "
+                f"{len(pairs)} plate(s) -> {len(fused_paths)} partition(s)"
             )
         else:
             _log("fused output skipped: missing finalized CP or MorphEm")

@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: debugging-and-error-recovery description: Systematic debugging workflow for failing tests, CI breakages, and runtime errors. Use when behavior is unexpected or a check fails.
+## name: debugging-and-error-recovery description: 'Systematic debugging workflow for failing tests, CI breakages, and runtime errors. Use when behavior is unexpected or a check fails.'
 
 # Debugging and Error Recovery
 

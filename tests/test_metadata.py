@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import io
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -137,11 +140,77 @@ class TestSelectPilotWells:
         assert arms[DISEASE_CONDITION_UV] >= 6
         assert arms[DISEASE_CONDITION_ACTIVE] >= 6
 
-    def test_scale_one_matches_base_selection(
-        self, metadata: pd.DataFrame
-    ) -> None:
+    def test_scale_one_matches_base_selection(self, metadata: pd.DataFrame) -> None:
         base = select_pilot_wells(metadata, cell_type="HRCE", max_wells=48)
-        same = select_pilot_wells(
-            metadata, cell_type="HRCE", max_wells=48, arm_scale=1
-        )
+        same = select_pilot_wells(metadata, cell_type="HRCE", max_wells=48, arm_scale=1)
         pd.testing.assert_frame_equal(base, same)
+
+
+def test_download_metadata_writes_zip_atomically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A mid-download failure must not leave a truncated RxRx19a-metadata.zip
+    # behind: the ZIP lands at a .part path and only replaces the final
+    # path after the full write (same pattern as download_embeddings).
+    import zipfile
+
+    from rerx.metadata import METADATA_URL, download_metadata
+
+    real_zip = io.BytesIO()
+    with zipfile.ZipFile(real_zip, "w") as zf:
+        zf.writestr("RxRx19a/metadata.csv", "experiment,plate\nHRCE-1,25\n")
+
+    class FakeResponse:
+        def __init__(self, chunks: list[bytes]) -> None:
+            self._chunks = chunks
+
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def iter_content(self, chunk_size: int):
+            yield from self._chunks
+
+    def fake_get(url, timeout, stream=False):
+        return FakeResponse([real_zip.getvalue()[:5], real_zip.getvalue()[5:]])
+
+    monkeypatch.setattr("rerx.metadata.requests.get", fake_get)
+    csv_path = download_metadata(tmp_path, url=METADATA_URL)
+    assert csv_path.is_file()
+    assert (tmp_path / "RxRx19a-metadata.zip").is_file()
+    assert not list(tmp_path.glob("*.part"))
+
+
+def test_download_metadata_interrupt_leaves_no_partial_zip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # If the connection dies mid-stream, no final ZIP may exist (the
+    # .part temp file is the only artifact and the next call retries).
+    from rerx.metadata import download_metadata
+
+    class ExplodingResponse:
+        def __enter__(self) -> "ExplodingResponse":
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def iter_content(self, chunk_size: int):
+            yield b"partial"
+            raise ConnectionError("connection reset")
+
+    monkeypatch.setattr(
+        "rerx.metadata.requests.get",
+        lambda url, timeout, stream=False: ExplodingResponse(),
+    )
+    with pytest.raises(ConnectionError):
+        download_metadata(tmp_path, url="https://example.com/m.zip")
+    assert not (tmp_path / "RxRx19a-metadata.zip").exists()

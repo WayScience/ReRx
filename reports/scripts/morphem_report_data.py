@@ -4,6 +4,13 @@ Writes reports/data/morphem_report.json with:
 - cell-level QC (counts, NaNs, duplicate cell IDs)
 - site-level median embeddings + PCA coords
 - Spearman site-distance and kNN-overlap vs CellProfiler and DL embeddings
+
+Usage:
+
+    python morphem_report_data.py <run-dir> [output.json]
+
+<run-dir> is the durable run directory (for example
+/pl/active/koala/ReRx/runs/pilot-dev) holding profiles/ underneath.
 """
 
 import json
@@ -13,8 +20,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-RUN = Path("/pl/active/koala/ReRx/runs/pilot-dev")
-OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "morphem_report.json")
+_RUN_DIR_ARG = 1
+_OUT_ARG = 2
+
+RUN = (
+    Path(sys.argv[_RUN_DIR_ARG])
+    if len(sys.argv) > _RUN_DIR_ARG
+    else Path("runs/pilot-dev")
+)
+OUT = (
+    Path(sys.argv[_OUT_ARG])
+    if len(sys.argv) > _OUT_ARG
+    else Path("morphem_report.json")
+)
 
 
 def site_medians(df: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
@@ -102,6 +120,7 @@ def main() -> None:
 
     def spearman_site_distance(a: pd.DataFrame, b: pd.DataFrame) -> float:
         common = a.index.intersection(b.index)
+
         def pdist(m: pd.DataFrame) -> np.ndarray:
             m = m.loc[common].values
             m = m - m.mean(axis=0)
@@ -109,12 +128,15 @@ def main() -> None:
             d = 1 - n @ n.T
             iu = np.triu_indices(len(common), k=1)
             return d[iu]
+
         da, db = pdist(a), pdist(b)
         from scipy.stats import spearmanr
+
         return float(spearmanr(da, db).statistic)
 
     def knn_overlap(a: pd.DataFrame, b: pd.DataFrame, k: int = 10) -> float:
         common = a.index.intersection(b.index)
+
         def neighbors(m: pd.DataFrame) -> np.ndarray:
             mat: np.ndarray = m.loc[common].values
             mat = mat - mat.mean(axis=0)
@@ -122,10 +144,9 @@ def main() -> None:
             d = mat @ mat.T
             np.fill_diagonal(d, -np.inf)
             return np.argsort(-d, axis=1)[:, :k]
+
         na, nb = neighbors(a), neighbors(b)
-        overlaps = [
-            len(set(na[i]) & set(nb[i])) / k for i in range(len(common))
-        ]
+        overlaps = [len(set(na[i]) & set(nb[i])) / k for i in range(len(common))]
         return float(np.mean(overlaps))
 
     result = {

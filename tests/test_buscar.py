@@ -127,9 +127,7 @@ def test_run_buscar_for_plate_returns_result_and_writes_files(tmp_path: Path) ->
     profiles = _plate_profiles()
     dest_dir = tmp_path / "buscar" / "cellprofiler"
 
-    result = run_buscar_for_plate(
-        profiles, dest_dir, experiment="HRCE-1", plate="25"
-    )
+    result = run_buscar_for_plate(profiles, dest_dir, experiment="HRCE-1", plate="25")
 
     assert isinstance(result, PlateBuscarResult)
     assert result.experiment == "HRCE-1"

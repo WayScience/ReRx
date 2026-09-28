@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: caveman description: Ultra-compressed communication mode adapted from JuliusBrussee/caveman. Use when the user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or asks for token-efficient replies. Compress chat responses while keeping technical accuracy, exact code, exact commands, exact errors, and user language intact. Source: "Adapted from JuliusBrussee/caveman" source_url: "https://github.com/JuliusBrussee/caveman" license: MIT
+## name: caveman description: 'Ultra-compressed communication mode adapted from JuliusBrussee/caveman. Use when the user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or asks for token-efficient replies. Compress chat responses while keeping technical accuracy, exact code, exact commands, exact errors, and user language intact. Source: "Adapted from JuliusBrussee/caveman" source_url: "https://github.com/JuliusBrussee/caveman" license: MIT'
 
 # Caveman
 

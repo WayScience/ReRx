@@ -337,14 +337,33 @@ const sorted = [...data.scores].sort((a, b) => a.on_score - b.on_score);
 for (const row of sorted) {
   const tr = document.createElement('tr');
   const concText = row.concentration !== null ? row.concentration + ' µM' : '—';
-  tr.innerHTML = `
-    <td>${row.perturbation}${row.is_reference ? ' <span style="color:var(--ink-muted)">(reference)</span>' : ''}</td>
-    <td>${concText}</td>
-    <td class="num">${row.on_score.toFixed(3)}</td>
-    <td class="num">${row.off_score.toFixed(3)}</td>
-    <td class="num">${row.cell_count.toLocaleString()}</td>
-    <td class="num">${row.well_count}</td>
-  `;
+  // Build cells with textContent (never innerHTML): dataset metadata is
+  // untrusted input and must not be parsed as HTML.
+  const tdPert = document.createElement('td');
+  tdPert.textContent = row.perturbation;
+  if (row.is_reference) {
+    const ref = document.createElement('span');
+    ref.style.color = 'var(--ink-muted)';
+    ref.textContent = ' (reference)';
+    tdPert.appendChild(ref);
+  }
+  const tdConc = document.createElement('td');
+  tdConc.textContent = concText;
+  const tdOn = document.createElement('td');
+  tdOn.className = 'num';
+  tdOn.textContent = row.on_score.toFixed(3);
+  const tdOff = document.createElement('td');
+  tdOff.className = 'num';
+  tdOff.textContent = row.off_score.toFixed(3);
+  const tdCount = document.createElement('td');
+  tdCount.className = 'num';
+  tdCount.textContent = row.cell_count.toLocaleString();
+  const tdWells = document.createElement('td');
+  tdWells.className = 'num';
+  tdWells.textContent = String(row.well_count);
+  for (const td of [tdPert, tdConc, tdOn, tdOff, tdCount, tdWells]) {
+    tr.appendChild(td);
+  }
   tbody.appendChild(tr);
 }
 
@@ -362,8 +381,8 @@ const bestOseltamivir = oseltamivirSeries.reduce((a, b) => (b.y < a.y ? b : a), 
 
 const summary = `
 At the well level, Remdesivir shows the dose-dependent reversal BUSCAR is meant to
-detect: its on-score falls from ${worstRemdesivir.y.toFixed(2)} at the lowest dose
-tested to ${bestRemdesivir.y.toFixed(2)} at ${bestRemdesivir.x} µM, meaning higher
+detect: its on-score falls from ${worstRemdesivir.y.toFixed(2)} at ${worstRemdesivir.x} µM
+to ${bestRemdesivir.y.toFixed(2)} at ${bestRemdesivir.x} µM, meaning higher
 doses move cells closer to the healthy reference. Oseltamivir carboxylate, the known
 weak/inactive control, never drops below ${bestOseltamivir.y.toFixed(2)} at any dose,
 consistent with it not treating this disease. Every off-score in this pilot is 0.00:

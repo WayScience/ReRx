@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: learning-opportunities description: Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better. argument-hint: "[orient]" license: CC-BY-4.0 source: "Adapted from DrCatHicks/learning-opportunities" source_url: "https://github.com/DrCatHicks/learning-opportunities/tree/main/learning-opportunities"
+## name: learning-opportunities description: 'Facilitates deliberate skill development during AI-assisted coding. Offers interactive learning exercises after architectural work (new files, schema changes, refactors). Use when completing features, making design decisions, or when user asks to understand code better.' argument-hint: "[orient]" license: CC-BY-4.0 source: "Adapted from DrCatHicks/learning-opportunities" source_url: "https://github.com/DrCatHicks/learning-opportunities/tree/main/learning-opportunities"
 
 # Learning Opportunities
 

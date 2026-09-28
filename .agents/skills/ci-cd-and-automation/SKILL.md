@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-## name: ci-cd-and-automation description: Keeps delivery workflows automated and repeatable. Use when adding checks, changing pipelines, or improving contributor onboarding.
+## name: ci-cd-and-automation description: 'Keeps delivery workflows automated and repeatable. Use when adding checks, changing pipelines, or improving contributor onboarding.'
 
 # CI/CD and Automation
 
