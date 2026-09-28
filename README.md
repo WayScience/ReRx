@@ -2,13 +2,19 @@
 
 Single-cell phenotypic reversal in RxRx19a
 
+**ReRx** = **Re**versal + **Rx**Rx19a. The name says what the pipeline
+does: it measures whether a treatment *reverses* diseased cells back to
+a healthy look, using the RxRx19a image dataset. ("Rx" is also the
+common shorthand for a prescription, which fits a drug-screening
+pipeline.)
+
 ## What this pipeline does
 
 ReRx turns raw microscopy images from the RxRx19a dataset into single-cell
 morphology profiles, then scores each treatment for how much it reverses
 a diseased cell back toward a healthy state (BUSCAR scoring).
 
-The pipeline has six stages, in order:
+The pipeline has eight stages, in order:
 
 1. **Metadata and selection** — download the RxRx19a metadata, then pick
    the wells for a run (a small pilot subset, or the full dataset).
@@ -19,10 +25,17 @@ The pipeline has six stages, in order:
    (Nuclei, Cells, Cytoplasm) into one row per cell, and add a stable
    `Metadata_cell_id`.
 1. **Crops** — cut a JPEG crop of each cell from each of the five
-   channels, for visual QC and future embedding models.
-1. **Finalize (per plate)** — annotate, normalize, and select features
-   with Pycytominer, then run a biological QC gate and BUSCAR reversal
+   channels, for visual QC and embedding models.
+1. **MorphEm** — run the MorphEm vision transformer over each cell's
+   five-channel crop to get a 1,560-number deep-learning feature
+   vector per cell. Runs in its own Apptainer container, on CPU.
+1. **Finalize (per plate, per profiler)** — annotate, normalize, and
+   select features with Pycytominer for both CellProfiler and MorphEm
+   profiles, run a biological QC gate, and run BUSCAR reversal
    scoring. See "Why the pipeline batches by plate" below.
+1. **Fuse** — join the two feature sets per cell on `Metadata_cell_id`
+   into one combined profile (`rerx.fuse`), written under
+   `profiles/fused/` with a `fusion.json` sidecar.
 1. **Catalog** — build a read-only DuckLake catalog over the finished
    Parquet files, so anyone can query the run with plain SQL.
 
@@ -122,6 +135,15 @@ runs/<run_id>/
 │   │   └── experiment=<e>/plate=<p>/profiles.parquet   # Pycytominer normalize
 │   └── feature_selected/
 │       └── experiment=<e>/plate=<p>/profiles.parquet   # Pycytominer select_features
+├── profiles/morphem/
+│   └── feature_selected/
+│       └── experiment=<e>/plate=<p>/profiles.parquet   # MorphEm embeddings
+├── profiles/fused/
+│   ├── fusion.json                                    # join key, column counts
+│   └── feature_selected/
+│       └── experiment=<e>/plate=<p>/profiles.parquet   # CellProfiler + MorphEm
+├── baseline/
+│   └── recursion_site_embeddings.parquet              # Recursion site embeddings
 ├── crops/cells/
 │   └── <shard_id>.parquet            # one row per cell, 5 JPEG columns
 ├── buscar/cellprofiler/
@@ -166,8 +188,8 @@ you port this pipeline to a different imaging dataset:
   above.
 
 Everything else — sharding, container invocation, CytoTable conversion,
-crops, the QC gate, BUSCAR, the catalog, and the Nextflow/Slurm
-orchestration — works unchanged.
+crops, MorphEm embedding, the QC gate, BUSCAR, fusion, the catalog, and
+the Nextflow/Slurm orchestration — works unchanged.
 
 ## High-level overview
 
