@@ -227,7 +227,7 @@ def test_add_perturbation_column_untreated_is_control() -> None:
 
 def test_add_perturbation_column_uses_rxrx_control_type_when_present() -> None:
     # mock/uv/active_untreated arms are all "untreated" but should stay
-    # distinguishable in the BUSCAR score table (plan.md section 19).
+    # distinguishable in the buscar score table (plan.md section 19).
     df = pd.DataFrame(
         {
             "Metadata_treatment": ["", "", "", "Remdesivir (GS-5734)"],

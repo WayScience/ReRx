@@ -225,7 +225,7 @@
   &middot; MorphEm model (Caicedo Lab, <a href="https://huggingface.co/CaicedoLab/MorphEm">huggingface.co/CaicedoLab/MorphEm</a>)
   &middot; CellProfiler 4.2.8 (<a href="https://cellprofiler.org">cellprofiler.org</a>)
   &middot; UMAP (<a href="https://doi.org/10.21105/joss.00861">McInnes et&nbsp;al., JOSS 2018</a>)
-  &middot; BUSCAR method: <a href="https://github.com/WayScience/Buscar-benchmark-analysis">WayScience/Buscar-benchmark-analysis</a>
+  &middot; buscar method: <a href="https://github.com/WayScience/Buscar-benchmark-analysis">WayScience/Buscar-benchmark-analysis</a>
 </footer>
 
 <script id="report-data" type="application/json">
@@ -8483,8 +8483,8 @@ ${Math.round(data.mean_knn_overlap_k10 * 100)} percent shared nearest neighbors,
 above the roughly 6 percent expected by chance. MorphEm's per-cell embeddings agree
 even more strongly: 0.75 Spearman and 45 percent shared neighbors against CellProfiler.
 All three methods put mock (healthy) and active-untreated (diseased) sites in separate
-regions, which is the basic separation BUSCAR reversal scoring depends on
-(see the companion BUSCAR report).` + (data.morphem ? ` That separation now shows up
+regions, which is the basic separation buscar reversal scoring depends on
+(see the companion buscar report).` + (data.morphem ? ` That separation now shows up
 in three independent feature sets, which is strong evidence the pilot's morphology
 signal is real.` : '') + `
 `;

@@ -320,7 +320,7 @@ def _finalize_profiles(
     profiler: str,
     buscar: bool,
 ) -> None:
-    """Annotate/normalize/select (and BUSCAR) per plate for one profiler."""
+    """Annotate/normalize/select (and buscar) per plate for one profiler."""
     import pandas as pd
 
     from rerx.cytotable import plate_partitions
@@ -347,11 +347,11 @@ def _finalize_profiles(
         feature_selected_frames.append(result.feature_selected)
         if result.buscar_skipped_reason:
             _log(
-                f"{profiler} {experiment}/{plate}: BUSCAR skipped -- "
+                f"{profiler} {experiment}/{plate}: buscar skipped -- "
                 f"{result.buscar_skipped_reason}"
             )
         else:
-            _log(f"{profiler} {experiment}/{plate}: BUSCAR scored")
+            _log(f"{profiler} {experiment}/{plate}: buscar scored")
     normalized = pd.concat(normalized_frames, ignore_index=True)
     selected = pd.concat(feature_selected_frames, ignore_index=True)
     _log(
@@ -410,7 +410,7 @@ def _fuse_finalized_profiles() -> None:
 
 
 def cmd_finalize() -> None:
-    """Merge shards, then finalize (annotate/normalize/select/BUSCAR) per plate."""
+    """Merge shards, then finalize (annotate/normalize/select/buscar) per plate."""
     import pandas as pd
 
     from rerx.catalog import build_run_catalog
@@ -430,16 +430,16 @@ def cmd_finalize() -> None:
     partition_paths = write_partitioned_profiles(profiles, raw_dir)
     _log(f"wrote {len(partition_paths)} partitioned profile files")
 
-    # Per-plate finalize batch (annotate/normalize/select_features/BUSCAR):
+    # Per-plate finalize batch (annotate/normalize/select_features/buscar):
     # each plate is its own biological batch with its own control
     # population, so this scales to a full multi-plate run without ever
     # holding more than one plate's profiles in memory at once (unlike a
-    # single dataset-wide normalize/select_features/BUSCAR call).
+    # single dataset-wide normalize/select_features/buscar call).
     _finalize_profiles(profiles, profiler="cellprofiler", buscar=True)
 
     # MorphEm pass: same per-plate finalize over the morphem raw shards,
     # only when every morphem shard is present (a partial set would
-    # silently produce incomplete BUSCAR scores).
+    # silently produce incomplete buscar scores).
     morphem_parquets = sorted(
         (RUN_DIR / "profiles" / "morphem" / "raw").glob("*.parquet")
     )

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ReRx Pilot — BUSCAR Reversal Scoring</title>
+<title>ReRx Pilot — buscar Reversal Scoring</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -89,7 +89,7 @@
 <body>
 
 <header>
-  <h1><a href="https://github.com/WayScience/ReRx">ReRx Pilot — BUSCAR Reversal Scoring</a></h1>
+  <h1><a href="https://github.com/WayScience/ReRx">ReRx Pilot — buscar Reversal Scoring</a></h1>
   <p class="subtitle">HRCE-1, Plate 25 &middot; well-level aggregate &middot; 18 treatment groups &middot; RxRx19a pilot run</p>
   <div class="badges" id="statusBadges"></div>
 </header>
@@ -97,9 +97,9 @@
 <main>
 
   <section>
-    <h2>What BUSCAR measures</h2>
+    <h2>What buscar measures</h2>
     <p class="lede">
-      BUSCAR (Bioactive Unbiased Single-cell Compound Assessment and Ranking) scores
+      buscar (Bioactive Unbiased Single-cell Compound Assessment and Ranking) scores
       each treatment on two numbers. The <strong>on-score</strong> asks: how far does
       this treatment sit from the healthy (mock) cells, using the features that
       actually change between healthy and diseased cells? A low on-score means strong
@@ -117,9 +117,9 @@
   <section>
     <h2>Why this report scores wells, not single cells</h2>
     <p class="lede">
-      BUSCAR needs the mock and disease control populations to actually look different
+      buscar needs the mock and disease control populations to actually look different
       before it can score anything. The pipeline checks this automatically before
-      running BUSCAR (a biological QC gate, using each feature's Cohen's d effect
+      running buscar (a biological QC gate, using each feature's Cohen's d effect
       size). At the single-cell level, cell-to-cell variation drowns out the
       treatment signal in this pilot. Aggregating to one row per well first,
       the same two populations separate clearly.
@@ -158,7 +158,7 @@
     <p class="lede">
       Remdesivir is the pilot's known-active positive control; Oseltamivir carboxylate
       is a known-inactive negative control (it targets a different virus family, not
-      coronaviruses). A working BUSCAR score should show Remdesivir's reversal getting
+      coronaviruses). A working buscar score should show Remdesivir's reversal getting
       stronger (on-score dropping) as the dose increases, and Oseltamivir staying flat
       and weak across doses.
     </p>
@@ -194,7 +194,7 @@
   <strong>Data and sources:</strong>
   RxRx19a dataset (Recursion, <a href="https://doi.org/10.48550/arXiv.2405.11908">arXiv:2405.11908</a>)
   &middot; CellProfiler 4.2.8 (<a href="https://cellprofiler.org">cellprofiler.org</a>)
-  &middot; BUSCAR methodology: <a href="https://github.com/WayScience/Buscar-benchmark-analysis" target="_blank" rel="noopener">WayScience/Buscar-benchmark-analysis</a>
+  &middot; buscar methodology: <a href="https://github.com/WayScience/Buscar-benchmark-analysis" target="_blank" rel="noopener">WayScience/Buscar-benchmark-analysis</a>
 </footer>
 
 <script id="report-data" type="application/json">
@@ -221,13 +221,13 @@ document.getElementById('statWellGate').textContent = wellGate.median_abs_effect
 
 document.getElementById('scGateNote').textContent =
   `${gateBadgeText(scGate)} against a threshold of 0.5, checked over ${scGate.checked_features} features. ` +
-  `This pilot's mock and disease single cells overlap too much to trust a single-cell BUSCAR score, ` +
-  `so the pipeline skips BUSCAR at this level and reports why instead of guessing.`;
+  `This pilot's mock and disease single cells overlap too much to trust a single-cell buscar score, ` +
+  `so the pipeline skips buscar at this level and reports why instead of guessing.`;
 
 document.getElementById('wellGateNote').textContent =
   `${gateBadgeText(wellGate)}, checked over ${wellGate.checked_features} features. ` +
   `Averaging cells within a well removes enough noise that mock and disease wells clearly separate, ` +
-  `so BUSCAR scoring below uses this well-level aggregate.`;
+  `so buscar scoring below uses this well-level aggregate.`;
 
 const COMPOUND_COLORS = {
   'Remdesivir (GS-5734)': getComputedStyle(document.documentElement).getPropertyValue('--remdesivir').trim(),
@@ -393,17 +393,17 @@ const worstRemdesivir = remdesivirSeries.reduce((a, b) => (b.y > a.y ? b : a), r
 const bestOseltamivir = oseltamivirSeries.reduce((a, b) => (b.y < a.y ? b : a), oseltamivirSeries[0]);
 
 const summary = `
-At the well level, Remdesivir shows the dose-dependent reversal BUSCAR is meant to
+At the well level, Remdesivir shows the dose-dependent reversal buscar is meant to
 detect: its on-score falls from ${worstRemdesivir.y.toFixed(2)} at ${worstRemdesivir.x} µM
 to ${bestRemdesivir.y.toFixed(2)} at ${bestRemdesivir.x} µM, meaning higher
 doses move cells closer to the healthy reference. Oseltamivir carboxylate, the known
 weak/inactive control, never drops below ${bestOseltamivir.y.toFixed(2)} at any dose,
 consistent with it not treating this disease. Every off-score in this pilot is 0.00:
-with only 1-2 wells per treatment, the KS-test BUSCAR uses to flag off-target
+with only 1-2 wells per treatment, the KS-test buscar uses to flag off-target
 features never reaches significance, so specificity cannot be judged yet. A larger
 run with more replicate wells per treatment is needed before off-scores are
-meaningful. MorphEm-space BUSCAR scores are not part of this report; the plan calls
-for running BUSCAR a second time in MorphEm's feature space once it exists, then
+meaningful. MorphEm-space buscar scores are not part of this report; the plan calls
+for running buscar a second time in MorphEm's feature space once it exists, then
 comparing the two rankings.
 `;
 document.getElementById('summaryText').textContent = summary.trim();

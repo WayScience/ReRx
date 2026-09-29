@@ -243,10 +243,10 @@ def plate_partitions(
     Group cell profiles into per-(experiment, plate) partitions.
 
     This is the batching unit for scalable finalize/annotate/normalize/
-    BUSCAR processing: a full RxRx19a run spans many plates, and each
+    buscar processing: a full RxRx19a run spans many plates, and each
     plate is its own biological batch (its own control population), so
     every downstream step -- Pycytominer normalization, feature
-    selection, BUSCAR scoring, partitioned Parquet writes -- should run
+    selection, buscar scoring, partitioned Parquet writes -- should run
     per plate rather than concatenating the whole dataset into memory at
     once (plan.md section 24 already partitions storage this way; this
     extends the same boundary to computation).

@@ -106,7 +106,7 @@ def test_finalize_plate_writes_all_stages(tmp_path: Path) -> None:
 
 def test_finalize_plate_control_separation_flags_bad_plate(tmp_path: Path) -> None:
     # Same distribution for every well -> mock and disease controls
-    # overlap, so BUSCAR has no on-signature and is skipped rather than
+    # overlap, so buscar has no on-signature and is skipped rather than
     # crashing.
     rng = np.random.default_rng(1)
     rows = []
@@ -162,7 +162,7 @@ def test_finalize_plate_control_separation_flags_bad_plate(tmp_path: Path) -> No
 
 
 def test_finalize_plate_buscar_keeps_profiler_label(tmp_path: Path) -> None:
-    # BUSCAR outputs must carry the profiler the plate was finalized
+    # buscar outputs must carry the profiler the plate was finalized
     # with (summary filename + "profiler" field), not the default label.
     raw = _plate_raw_profiles().drop(
         columns=["_disease_condition", "_treatment", "_treatment_conc"]

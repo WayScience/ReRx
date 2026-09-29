@@ -27,7 +27,7 @@ of overloading one:
                                          query selects as the
                                          normalization reference
     Metadata_buscar_state             -- healthy/disease/other, the
-                                         state BUSCAR scoring reads
+                                         state buscar scoring reads
                                          (see :mod:`rerx.buscar`)
 """
 
@@ -177,7 +177,7 @@ def pycytominer_control_type(rxrx_control: str) -> str:
 
 def buscar_state(rxrx_control: str) -> str:
     """
-    Map an RxRx control label to the BUSCAR healthy/disease state.
+    Map an RxRx control label to the buscar healthy/disease state.
 
     Parameters
     ----------
@@ -189,7 +189,7 @@ def buscar_state(rxrx_control: str) -> str:
     str
         :data:`rerx.metadata.HEALTHY_STATE` for mock,
         :data:`rerx.metadata.DISEASE_STATE` for UV or active/untreated
-        or treated wells (all are SARS-CoV-2-challenged; BUSCAR treats
+        or treated wells (all are SARS-CoV-2-challenged; buscar treats
         "disease" as the reference to reverse away from), else
         :data:`BUSCAR_STATE_OTHER`.
     """
@@ -250,11 +250,11 @@ def add_control_columns(annotated: pd.DataFrame) -> pd.DataFrame:
 
 def add_perturbation_column(annotated: pd.DataFrame) -> pd.DataFrame:
     """
-    Add ``Metadata_perturbation``, the stable BUSCAR perturbation identifier.
+    Add ``Metadata_perturbation``, the stable buscar perturbation identifier.
 
     Plan.md section 19: ``Metadata_perturbation = <treatment>__<concentration>``,
     with untreated/control wells collapsed to a single ``"control"`` label
-    (BUSCAR's ``perturbation_col`` groups replicate wells of the same
+    (buscar's ``perturbation_col`` groups replicate wells of the same
     treatment+dose together; giving every control well a distinct
     perturbation id would prevent that grouping).
 
@@ -298,7 +298,7 @@ def add_perturbation_column(annotated: pd.DataFrame) -> pd.DataFrame:
             return f"{treatment}__{conc_str}" if conc_str else str(treatment)
         # Untreated: keep mock/uv/active_untreated distinguishable when the
         # RxRx control-type column is available (plan.md section 19 --
-        # BUSCAR scores per perturbation, so collapsing every untreated
+        # buscar scores per perturbation, so collapsing every untreated
         # arm into one "control" bucket would hide their differences).
         control_type = row.get("Metadata_rxrx_control_type")
         if control_type:

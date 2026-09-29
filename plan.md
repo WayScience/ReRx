@@ -7,7 +7,7 @@ Primary outputs:
 - Single-cell CellProfiler features.
 - Single-cell MorphEm embeddings.
 - Pycytominer-ready profiles.
-- BUSCAR-ready profiles and scores.
+- buscar-ready profiles and scores.
 - A matched site-level comparison of Recursion RxRx19a embeddings and MorphEm embeddings.
 - Cell crops stored as high-quality JPEG bytes in Parquet.
 - Plain Parquet datasets that work without DuckDB or DuckLake.
@@ -21,14 +21,14 @@ Use RxRx19a to ask:
 
 > Which treatments move SARS-CoV-2-infected cells toward the mock-cell morphology while limiting unrelated morphology changes?
 
-For BUSCAR:
+For buscar:
 
 - Target: mock HRCE cells.
 - Reference: viral HRCE control cells.
 - Perturbation: viral HRCE cells plus compound and concentration.
 - Irradiated-virus cells: extra control, not the primary target.
 
-Run BUSCAR separately on CellProfiler and MorphEm feature spaces first. Do not concatenate feature spaces until each works alone.
+Run buscar separately on CellProfiler and MorphEm feature spaces first. Do not concatenate feature spaces until each works alone.
 
 ## 2. Design rules
 
@@ -338,7 +338,7 @@ Use the Recursion embeddings to test:
 - Replicate consistency.
 - Dose-response signal.
 
-Do not treat this as the main BUSCAR result. These embeddings are site-level. BUSCAR is intended for distributions of single cells.
+Do not treat this as the main buscar result. These embeddings are site-level. buscar is intended for distributions of single cells.
 
 Store run-specific selected data under:
 
@@ -631,7 +631,7 @@ morphem_site_median
 morphem_site_mean
 ```
 
-Keep BUSCAR separate from this site-level comparison. BUSCAR remains a single-cell analysis for CellProfiler and MorphEm. The Recursion embedding comparison is a baseline and representation benchmark.
+Keep buscar separate from this site-level comparison. buscar remains a single-cell analysis for CellProfiler and MorphEm. The Recursion embedding comparison is a baseline and representation benchmark.
 
 ## 18. Stage 9: coSMicQC and Pycytominer
 
@@ -677,9 +677,9 @@ For MorphEm profiles:
 
 Keep raw, annotated, normalized, and selected datasets separate.
 
-## 19. Stage 10: BUSCAR analysis
+## 19. Stage 10: buscar analysis
 
-Run BUSCAR after profile production passes QC.
+Run buscar after profile production passes QC.
 
 Primary HRCE mapping:
 
@@ -819,7 +819,7 @@ GPU workflow B
 CPU workflow C
   QC
   Pycytominer
-  BUSCAR
+  buscar
   catalog
   publish
 ```
@@ -930,7 +930,7 @@ Technical:
 - MorphEm site aggregates join one-to-one with selected Recursion site embeddings.
 - Recursion-versus-MorphEm comparison metrics run on the exact same site subset.
 - Pycytominer can annotate and normalize the pilot.
-- BUSCAR can score the pilot.
+- buscar can score the pilot.
 - Frozen DuckLake queries the completed Parquet data.
 - PetaLibrary-to-Isilon mirror validates.
 
@@ -971,7 +971,7 @@ After the pilot passes:
 1. Validate the mirror.
 1. Protect the run when it becomes a referenced analysis dataset.
 
-Process all RxRx19a images for the full feature dataset. Keep the primary BUSCAR analysis focused on HRCE first. Treat Vero as a secondary analysis unless the scientific question changes.
+Process all RxRx19a images for the full feature dataset. Keep the primary buscar analysis focused on HRCE first. Treat Vero as a secondary analysis unless the scientific question changes.
 
 ## 29. First implementation milestones
 
@@ -1002,7 +1002,7 @@ Process all RxRx19a images for the full feature dataset. Keep the primary BUSCAR
 - Compare Recursion and MorphEm representations on identical sites.
 - Add QC.
 - Add Pycytominer.
-- Add BUSCAR.
+- Add buscar.
 - Measure resources and runtime.
 
 ### Milestone 4: storage and publication
@@ -1018,7 +1018,7 @@ Process all RxRx19a images for the full feature dataset. Keep the primary BUSCAR
 - Freeze versions and configuration.
 - Run all images.
 - Publish full dataset.
-- Run HRCE BUSCAR analysis.
+- Run HRCE buscar analysis.
 
 ## 30. Things not to do yet
 
@@ -1038,7 +1038,7 @@ Plain files, stable IDs, Parquet, Singularity, Slurm, and small Python tools are
 ## 31. References
 
 - ReRx project template: https://github.com/CU-DBMI/template-uv-python-research-software/
-- BUSCAR: https://github.com/WayScience/buscar
+- buscar: https://github.com/WayScience/buscar
 - RxRx19a dataset docs: https://github.com/recursionpharma/rxrx-datasets/tree/trunk/rxrx19a
 - RxRx19a provided embeddings: https://storage.googleapis.com/rxrx/RxRx19a/RxRx19a-DL-embeddings.zip
 - Alpine skill: https://github.com/WayScience/formascute/blob/main/.agents/skills/alpine/SKILL.md

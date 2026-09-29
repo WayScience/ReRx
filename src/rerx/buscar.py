@@ -1,5 +1,5 @@
 """
-BUSCAR reversal scoring for ReRx.
+buscar reversal scoring for ReRx.
 
 Implements plan.md sections 16-17: wraps ``buscar.calculate_buscar_scores``
 (Polar-based) to compute on/off reversal scores for each condition relative to
@@ -38,7 +38,7 @@ DEFAULT_PERTURBATION_COL = "Metadata_perturbation"
 @dataclass(frozen=True)
 class BuscarConfig:
     """
-    Parameters for a BUSCAR analysis.
+    Parameters for a buscar analysis.
 
     Attributes
     ----------
@@ -149,7 +149,7 @@ def calculate_scores_summary(
     config: BuscarConfig | None = None,
 ) -> pl.DataFrame:
     """
-    Compute BUSCAR scores across perturbations (plan.md section 17).
+    Compute buscar scores across perturbations (plan.md section 17).
 
     Wraps ``buscar.calculate_buscar_scores`` with ReRx defaults.
 
@@ -191,7 +191,7 @@ def write_buscar_outputs(
     signatures : tuple[list[str], list[str], list[str]]
         ``(on, off, ambiguous)`` feature lists.
     scores : pl.DataFrame
-        BUSCAR score table.
+        buscar score table.
     dest_dir : Path
         ``buscar/<profiler>`` directory inside the run.
     profiler : str
@@ -238,7 +238,7 @@ def write_buscar_outputs(
 @dataclass(frozen=True)
 class PlateBuscarResult:
     """
-    Outcome of running BUSCAR for one plate's cell profiles.
+    Outcome of running buscar for one plate's cell profiles.
 
     Attributes
     ----------
@@ -277,9 +277,9 @@ def run_buscar_for_plate(  # noqa: PLR0913
     config: BuscarConfig | None = None,
 ) -> PlateBuscarResult:
     """
-    Run BUSCAR signature identification and scoring for one plate.
+    Run buscar signature identification and scoring for one plate.
 
-    This is the per-plate BUSCAR batching unit: each plate carries its
+    This is the per-plate buscar batching unit: each plate carries its
     own mock/disease control population, so signatures (which features
     move between healthy and disease) are identified fresh per plate
     rather than pooling controls across an entire multi-plate dataset

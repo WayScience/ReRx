@@ -1,15 +1,15 @@
 """
-Per-plate finalize batch: annotate, normalize, select, QC gate, BUSCAR.
+Per-plate finalize batch: annotate, normalize, select, QC gate, buscar.
 
 Implements the compute-scaling half of plan.md sections 18-19: a full
 RxRx19a run spans many plates, and each plate is its own biological batch
-(its own control population), so annotate/normalize/feature_select/BUSCAR
+(its own control population), so annotate/normalize/feature_select/buscar
 all run per plate rather than concatenating the whole dataset into memory
 (mirrors the storage partitioning in :func:`rerx.cytotable.plate_partitions`
 / :func:`rerx.cytotable.write_partitioned_profiles`, plan.md section 24).
 
-This module also gates BUSCAR behind a biological QC check
-(:func:`rerx.validate.check_control_separation`): BUSCAR's own
+This module also gates buscar behind a biological QC check
+(:func:`rerx.validate.check_control_separation`): buscar's own
 ``calculate_buscar_scores`` raises when a plate's mock and disease
 controls have no separating morphology feature (empty on-signature -> a
 zero-row Earth Mover's Distance computation), so a bad plate must be
@@ -53,10 +53,10 @@ class PlateFinalizeResult:
     control_separation : ControlSeparationResult | None
         Biological QC gate result for this plate.
     buscar : PlateBuscarResult | None
-        BUSCAR signatures/scores for this plate, or ``None`` if skipped.
+        buscar signatures/scores for this plate, or ``None`` if skipped.
     buscar_skipped_reason : str | None
-        Why BUSCAR was skipped (e.g. failed control separation, or a
-        real BUSCAR error caught after the gate still let a bad case
+        Why buscar was skipped (e.g. failed control separation, or a
+        real buscar error caught after the gate still let a bad case
         through), or ``None`` if it ran.
     """
 
@@ -83,7 +83,7 @@ def finalize_plate(  # noqa: PLR0913
     profiler: str = "cellprofiler",
 ) -> PlateFinalizeResult:
     """
-    Run the full per-plate finalize batch: annotate through BUSCAR.
+    Run the full per-plate finalize batch: annotate through buscar.
 
     Parameters
     ----------
@@ -103,14 +103,14 @@ def finalize_plate(  # noqa: PLR0913
     plate : str
         Plate id.
     buscar_config : BuscarConfig | None
-        BUSCAR scoring configuration. Defaults to ``BuscarConfig()``.
+        buscar scoring configuration. Defaults to ``BuscarConfig()``.
     run_buscar : bool
-        Whether to attempt BUSCAR at all. When ``False``, only
+        Whether to attempt buscar at all. When ``False``, only
         annotate/normalize/select_features run (useful for a fast
         per-shard partial finalize before every arm is present).
     profiler : str
         Feature source sub-tree: ``"cellprofiler"`` or ``"morphem"``.
-        Selects the output paths (and the BUSCAR feature pool comes
+        Selects the output paths (and the buscar feature pool comes
         from the profiles themselves either way).
 
     Returns
@@ -151,7 +151,7 @@ def finalize_plate(  # noqa: PLR0913
         buscar_skipped_reason = (
             "mock/active_untreated controls do not separate "
             f"(median |Cohen's d| = {control_separation.median_abs_effect_size:.3f} "
-            f"< {control_separation.effect_threshold}); BUSCAR would error on an "
+            f"< {control_separation.effect_threshold}); buscar would error on an "
             "empty on-signature, so it was skipped for this plate"
         )
     else:
@@ -167,12 +167,12 @@ def finalize_plate(  # noqa: PLR0913
             )
         except (ValueError, ZeroDivisionError) as exc:
             # Belt-and-suspenders: the control-separation gate should
-            # already have caught the "no on-signature" case, but BUSCAR
+            # already have caught the "no on-signature" case, but buscar
             # can still fail for other edge cases -- e.g. an empty
             # off-signature dividing by zero under "affected_ratio", or a
             # perturbation with too few replicate wells; never let that
             # crash the whole finalize run.
-            buscar_skipped_reason = f"BUSCAR raised {exc.__class__.__name__}: {exc}"
+            buscar_skipped_reason = f"buscar raised {exc.__class__.__name__}: {exc}"
 
     return PlateFinalizeResult(
         experiment=experiment,

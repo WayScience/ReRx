@@ -9,7 +9,7 @@ other datasets.
 
 The pipeline turns RxRx19a microscopy images into single-cell morphology
 profiles.
-It then uses BUSCAR to score how much each treatment moves infected cells
+It then uses buscar to score how much each treatment moves infected cells
 toward the healthy state.
 
 The pipeline has eight stages, in order:
@@ -30,7 +30,7 @@ The pipeline has eight stages, in order:
    Apptainer container, on CPU.
 1. **Finalize (per plate, per profiler)** — annotate, normalize, and
    select features with Pycytominer for both CellProfiler and MorphEm
-   profiles, run a biological QC gate, and run BUSCAR reversal
+   profiles, run a biological QC gate, and run buscar reversal
    scoring. See "Why the pipeline batches by plate" below.
 1. **Fuse** — join the two feature sets per cell on `Metadata_cell_id`
    into one combined profile (`rerx.fuse`), written under
@@ -60,7 +60,7 @@ This has three effects on the code:
   `(experiment, plate)`. Every downstream step consumes one plate's
   group at a time.
 - `rerx.finalize.finalize_plate` runs annotate, normalize,
-  feature-select, the control-separation QC gate, and BUSCAR for one
+  feature-select, the control-separation QC gate, and buscar for one
   plate. It never holds more than one plate's cells in memory.
 - A full multi-plate run (thousands of plates) processes plate by
   plate. Memory use stays flat as the run scales, instead of growing
@@ -83,16 +83,16 @@ morphology feature, using Cohen's d effect size. If the median absolute
 effect size falls below a threshold (0.5 by default), the check fails
 for that plate.
 
-This check runs before BUSCAR, not after, for a concrete reason: BUSCAR
+This check runs before buscar, not after, for a concrete reason: buscar
 itself raises an error when there is no separating feature between mock
 and disease (division by zero inside its Earth Mover's Distance
-calculation). `finalize_plate` checks first, then skips BUSCAR with a
+calculation). `finalize_plate` checks first, then skips buscar with a
 clear reason logged, instead of letting the whole run crash on one bad
 plate.
 
-## BUSCAR reversal scoring
+## buscar reversal scoring
 
-BUSCAR (`rerx.buscar`) answers one question per treatment: how far does
+buscar (`rerx.buscar`) answers one question per treatment: how far does
 this treatment move a diseased cell back toward the healthy state?
 
 The scoring needs three pieces of metadata, all added automatically
@@ -100,7 +100,7 @@ during the finalize stage:
 
 - `Metadata_rxrx_control_type` — RxRx19a's own control label (`mock`,
   `uv`, `active_untreated`, `treated`).
-- `Metadata_perturbation` — a stable identifier for BUSCAR to group
+- `Metadata_perturbation` — a stable identifier for buscar to group
   replicate wells by. Mock, UV, and active-untreated controls each get
   their own value (so their differences stay visible). A dosed
   treatment becomes `<treatment>__<concentration>`, for example
@@ -108,7 +108,7 @@ during the finalize stage:
 - `Metadata_buscar_state` — `Mock` for mock wells, `Active SARS-CoV-2`
   for every challenged well (UV, active-untreated, treated).
 
-BUSCAR writes two files per plate:
+buscar writes two files per plate:
 
 - `signatures.parquet` — which morphology features move between the
   healthy and disease controls (the "on" signature), and which do not
@@ -187,7 +187,7 @@ you port this pipeline to a different imaging dataset:
   above.
 
 Everything else — sharding, container invocation, CytoTable conversion,
-crops, MorphEm embedding, the QC gate, BUSCAR, fusion, the catalog, and
+crops, MorphEm embedding, the QC gate, buscar, fusion, the catalog, and
 the Nextflow/Slurm orchestration — works unchanged.
 
 ## High-level overview

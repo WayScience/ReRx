@@ -11,7 +11,7 @@ from a plain file:// URL with no server, no network, and no build step.
   all 33,330 pilot cells on Alpine CPU nodes (1,920 raw features,
   1,552 after selection; 0.75 Spearman / 45% kNN overlap vs
   CellProfiler).
-- `buscar_reversal.html` — BUSCAR reversal scores for every pilot
+- `buscar_reversal.html` — buscar reversal scores for every pilot
   treatment (efficacy/specificity scatter, Remdesivir/Oseltamivir dose
   response, full score table). Explains why the report scores wells
   instead of single cells (see `rerx.validate.check_control_separation`).

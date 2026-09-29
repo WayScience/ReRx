@@ -1,6 +1,6 @@
 """
 Pilot report data prep: builds compact JSON payloads for the two HTML
-reports (phenotypic/embeddings comparison, BUSCAR reversal scoring).
+reports (phenotypic/embeddings comparison, buscar reversal scoring).
 
 Reads the pilot run's already-downloaded local copies under
 reports/data/ (synced from Alpine) and writes reports/data/*.json.
@@ -168,7 +168,7 @@ def build_buscar_payload() -> dict:
     sc_gate = check_control_separation(normalized)
 
     # Well-level aggregate (median per well x perturbation) -- the
-    # replicate unit BUSCAR is designed to score at.
+    # replicate unit buscar is designed to score at.
     agg = (
         normalized.groupby(["Metadata_Well", "Metadata_perturbation"])[feat_cols]
         .median()

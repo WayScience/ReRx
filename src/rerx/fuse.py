@@ -6,7 +6,7 @@ overlap — every MorphEm cell has a CP counterpart). The fused frame keeps
 CP metadata columns, CP feature columns, and appends the ``Morphem_``
 features. Fusion is an inner join: cells present in only one space are
 dropped with a warning, since downstream analysis (annotation, feature
-selection, BUSCAR) requires both views of the same cell.
+selection, buscar) requires both views of the same cell.
 
 The join happens at this seam deliberately (project precedent:
 rename-at-merge-seam in FINALIZE) — the two spaces disagree on some
