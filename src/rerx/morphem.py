@@ -74,9 +74,9 @@ FEATURE_ARRAY_RANK = 2
 # CPU and MPS with batch 32 the sweet spot.
 MORPHEM_DEFAULT_BATCH_SIZE = 32
 
-# Baked model directory inside containers/morphem.def (no runtime
-# network on Alpine compute nodes). Overridable because load_model()
-# prefers this env var when set.
+# Baked model directory inside containers/morphem.def. Runtime jobs use
+# local pinned weights without downloading them again. Overridable because
+# load_model() prefers this env var when set.
 MORPHEM_MODEL_DIR_ENV = "MORPHEM_MODEL_DIR"
 
 # Column layout of a MorphEm profile Parquet: metadata passthrough plus
@@ -126,7 +126,7 @@ def load_model() -> Any:  # noqa: ANN401
 
     model_dir = os.environ.get(MORPHEM_MODEL_DIR_ENV)
     if model_dir:
-        # Baked model inside containers/morphem.def (offline nodes).
+        # Baked model inside containers/morphem.def (no runtime download).
         # revision is a hub-only kwarg; local dirs load without it.
         return AutoModel.from_pretrained(
             model_dir,

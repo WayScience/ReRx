@@ -7,8 +7,8 @@ From: python:3.11-slim
 # stays in the host uv venv, which never gains torch/transformers.
 #
 # The HuggingFace model is BAKED IN at build time (CaicedoLab/MorphEm,
-# trust_remote_code=True) because Alpine compute nodes have no runtime
-# network. Pins proven in spikes/001-morphem-cpu-vs-gpu:
+# trust_remote_code=True) so each job uses the same local, pinned weights
+# without a runtime download. Pins proven in spikes/001-morphem-cpu-vs-gpu:
 #   torch 2.x CPU wheel, transformers==4.46.3 (5.x breaks trust_remote_code).
 
 %files
@@ -26,10 +26,11 @@ From: python:3.11-slim
     pip install --no-cache-dir \
         transformers==4.46.3 \
         pillow numpy pandas pyarrow safetensors huggingface_hub
-    # Bake the model + custom code into the image at build time.
-    # revision is pinned to the same commit SHA as
-    # rerx.morphem.MORPHEM_MODEL_REVISION so the baked model and any
-    # hub fallback resolve to identical code/weights.
+    # Download the model once when building the image, not per shard or image.
+    # Inference loads these local weights to avoid per-job downloads.
+    # A networked DeepProfiler service could cache weights once and reuse them instead.
+    # Pin the revision to rerx.morphem.MORPHEM_MODEL_REVISION so the baked model
+    # and any hub fallback use identical code and weights.
     mkdir -p /opt/morphem/model
     python - <<'PYEOF'
 import os
