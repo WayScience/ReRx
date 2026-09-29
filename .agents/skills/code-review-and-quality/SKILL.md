@@ -27,6 +27,10 @@ Every non-trivial change should be reviewed across correctness, readability, arc
 
 - Tests pass for changed behavior.
 - Lint/type checks pass.
+- Markdown uses one sentence per line for readable diffs.
+- Notebooks are executed from top to bottom, with cell numbers in order and no stale errors.
+- Generated outputs, reports, and screenshots have a clear command or source data path.
+- No secrets, credentials, or local-only paths are added.
 - No known high-severity defects remain.
 
 ## Suggested commands

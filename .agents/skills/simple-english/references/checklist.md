@@ -29,7 +29,7 @@ Search the draft for each pattern. Every hit outside code blocks and quoted text
 
 ## Judgment checks
 
-5. **Classification.** Is each passage cleanly procedural or descriptive? Procedures in imperative, descriptions never in imperative.
+1. **Classification.** Is each passage cleanly procedural or descriptive? Procedures in imperative, descriptions never in imperative.
 1. **Voice.** Any passive sentence: is the agent truly unknown, and is the passage descriptive? Otherwise make it active (Rule 3.6).
 1. **Condition placement.** Every "if/when" stands before its command, with a comma (Rule 5.4).
 1. **Synonym rotation.** One term per concept across the whole document (Rules 1.11, 9.4). Scan for check/verify/confirm, config/settings, run/execute.
