@@ -22,6 +22,7 @@ Subcommands:
     crops <sid>         per-cell JPEG crops for one shard
     morphem <sid>       MorphEm-embed one crop shard (inside morphem.sif)
     finalize            merge, annotate/normalize/select, validate, catalog
+    recursion-buscar    buscar-score Recursion's published site embeddings
 """
 
 from __future__ import annotations
@@ -409,6 +410,65 @@ def _fuse_finalized_profiles() -> None:
     )
 
 
+def cmd_recursion_buscar() -> None:
+    """buscar-score Recursion's published site embeddings per plate."""
+    import pandas as pd
+
+    from rerx.buscar import run_buscar_for_plate
+    from rerx.cytotable import plate_partitions
+    from rerx.embeddings import build_recursion_buscar_profiles
+
+    emb_path = (
+        RUN_DIR
+        / "baseline"
+        / "recursion_site_embeddings"
+        / ("recursion_site_embeddings.parquet")
+    )
+    if not emb_path.is_file():
+        _log("recursion buscar skipped: published embeddings not present")
+        return
+    embeddings = pd.read_parquet(emb_path)
+    selection = pd.DataFrame(_load_selection())
+    profiles = build_recursion_buscar_profiles(embeddings, selection)
+    _log(f"recursion: annotated {len(profiles)} site embeddings")
+
+    # Site embeddings are one row per (well, site); average to one row
+    # per well (the replicate unit buscar scores) so the KS test has
+    # the same per-treatment sample sizes as the other profilers.
+    feature_cols = [c for c in profiles.columns if c.startswith("Recursion_")]
+    group_cols = [
+        "experiment",
+        "plate",
+        "well",
+        "Metadata_rxrx_control_type",
+        "Metadata_perturbation",
+        "Metadata_buscar_state",
+    ]
+    well_profiles = (
+        profiles.groupby(group_cols, as_index=False)[feature_cols]
+        .median()
+        .reset_index(drop=True)
+    )
+    # plate_partitions groups on (Image_Metadata_Experiment,
+    # Image_Metadata_Plate); supply those names for the embeddings.
+    well_profiles = well_profiles.rename(  # type: ignore[dict-item]
+        columns={
+            "experiment": "Image_Metadata_Experiment",
+            "plate": "Image_Metadata_Plate",
+            "well": "Image_Metadata_Well",
+        }
+    )
+    for (experiment, plate), plate_profiles in plate_partitions(well_profiles):
+        run_buscar_for_plate(
+            plate_profiles=plate_profiles,
+            dest_dir=RUN_DIR / "buscar" / "recursion",
+            experiment=experiment,
+            plate=plate,
+            profiler="recursion",
+        )
+        _log(f"recursion {experiment}/{plate}: buscar scored")
+
+
 def cmd_finalize() -> None:
     """Merge shards, then finalize (annotate/normalize/select/buscar) per plate."""
     import pandas as pd
@@ -517,6 +577,7 @@ def main() -> None:
         p = sub.add_parser(name)
         p.add_argument("shard_id")
     sub.add_parser("finalize")
+    sub.add_parser("recursion-buscar")
     args = parser.parse_args()
 
     if args.command == "prepare":
@@ -533,6 +594,8 @@ def main() -> None:
         cmd_morphem(args.shard_id)
     elif args.command == "finalize":
         cmd_finalize()
+    elif args.command == "recursion-buscar":
+        cmd_recursion_buscar()
     else:  # pragma: no cover - argparse enforces choices
         raise SystemExit(f"unknown command {args.command!r}")
 

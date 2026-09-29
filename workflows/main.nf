@@ -132,6 +132,7 @@ process FINALIZE {
     """
     ${rerxEnv}
     ${params.python} ${params.repo}/scripts/rerx_tasks.py finalize
+    ${params.python} ${params.repo}/scripts/rerx_tasks.py recursion-buscar
     cp ${params.run_dir}/_SUCCESS _SUCCESS
     """
 }

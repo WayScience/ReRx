@@ -159,3 +159,81 @@ def convert_embeddings(
         parquet_path=parquet_path,
         site_count=len(df),
     )
+
+
+def build_recursion_buscar_profiles(
+    embeddings: pd.DataFrame,
+    selection: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Annotate Recursion site embeddings with buscar metadata.
+
+    The published embeddings are site-level (one row per imaged field,
+    ``feature_0`` .. ``feature_1023`` from a DenseNet-161 variant;
+    biorxiv 2020.08.02.233064). buscar needs ``Metadata_perturbation``
+    and ``Metadata_buscar_state`` to group rows and pick controls, so
+    this joins each site to its selection row and derives both columns
+    with the same rules the other profilers use
+    (:func:`rerx.pycytominer.add_control_columns` /
+    :func:`rerx.pycytominer.add_perturbation_column`).
+
+    Parameters
+    ----------
+    embeddings : pd.DataFrame
+        Site embeddings with a ``site_id`` column and ``feature_*``
+        feature columns (see :func:`convert_embeddings`).
+    selection : pd.DataFrame
+        Pilot selection rows (site metadata incl.
+        ``disease_condition``/``treatment``/``treatment_conc``), with
+        ``site_id``.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per matched site: embedding features plus
+        ``Metadata_perturbation`` and ``Metadata_buscar_state``.
+
+    Raises
+    ------
+    ValueError
+        If ``selection`` is empty or the join matches no sites.
+    """
+    from rerx.pycytominer import (
+        add_control_columns,
+        add_perturbation_column,
+    )
+
+    if selection.empty:
+        raise ValueError("selection is empty: no sites to annotate")
+
+    meta = selection[
+        [
+            "site_id",
+            "experiment",
+            "plate",
+            "well",
+            "disease_condition",
+            "treatment",
+            "treatment_conc",
+        ]
+    ].copy()
+    profiles = embeddings.merge(meta, on="site_id", how="inner")
+    if profiles.empty:
+        raise ValueError(
+            "no embedding rows matched the selection's site_ids; "
+            "check that both cover the same experiment/plate/well/site"
+        )
+    # buscar discovers feature columns by prefix (rerx.buscar.
+    # MORPHOLOGICAL_FEATURE_PREFIXES); rename the published
+    # ``feature_<i>`` columns to ``Recursion_<i>`` so the same
+    # discovery works in this feature space too.
+    profiles = profiles.rename(
+        columns={
+            c: f"Recursion_{c.removeprefix('feature_')}"
+            for c in profiles.columns
+            if c.startswith("feature_")
+        }
+    )
+    profiles = add_control_columns(profiles)
+    profiles = add_perturbation_column(profiles)
+    return profiles

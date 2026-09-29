@@ -22,6 +22,7 @@ MORPHOLOGICAL_FEATURE_PREFIXES = (
     "Cytoplasm_",
     "Nuclei_",
     "Morphem_",
+    "Recursion_",
 )
 CONTROL_PERTURBATION = "control"
 
