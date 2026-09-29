@@ -1,18 +1,16 @@
-# ReRx
+# RxRx19a reanalysis
 
-Single-cell phenotypic reversal in RxRx19a
-
-**ReRx** = **Re**versal + **Rx**Rx19a. The name says what the pipeline
-does: it measures whether a treatment *reverses* diseased cells back to
-a healthy look, using the RxRx19a image dataset. ("Rx" is also the
-common shorthand for a prescription, which fits a drug-screening
-pipeline.)
+This repository reanalyzes RxRx19a images to ask whether treatments move
+SARS-CoV-2-infected cells toward a healthy appearance.
+The pipeline is specific to RxRx19a, though some parts can be reused with
+other datasets.
 
 ## What this pipeline does
 
-ReRx turns raw microscopy images from the RxRx19a dataset into single-cell
-morphology profiles, then scores each treatment for how much it reverses
-a diseased cell back toward a healthy state (BUSCAR scoring).
+The pipeline turns RxRx19a microscopy images into single-cell morphology
+profiles.
+It then uses BUSCAR to score how much each treatment moves infected cells
+toward the healthy state.
 
 The pipeline has eight stages, in order:
 
