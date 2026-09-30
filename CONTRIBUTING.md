@@ -10,8 +10,8 @@ If you are stuck, please feel free to ask any questions or ask for help.
 
 This project is governed by our [code of conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to community leaders responsible for enforcement.
-Please open a [new security advisory notice](https://github.com/WayScience/RxRx19a-reanalysis/security/advisories/new) (using defaults or "n/a" where unable to fill in the form) to privately notify us of any incidents of this nature.
+reported using the contact path in the [code of conduct](CODE_OF_CONDUCT.md#enforcement).
+Please open a [new security advisory notice](https://github.com/WayScience/RxRx19a-reanalysis/security/advisories/new) (using defaults or "n/a" where unable to fill in the form) to privately report security vulnerabilities.
 
 ## Development
 

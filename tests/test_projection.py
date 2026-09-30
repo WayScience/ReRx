@@ -88,6 +88,16 @@ def test_projection_scores_rejects_missing_controls() -> None:
         projection_scores(profiles)
 
 
+def test_projection_scores_default_feature_cols_skip_non_numeric() -> None:
+    profiles = _profiles()
+    profiles["Metadata_note"] = "ignored"
+    # A non-Metadata_, non-numeric column must not be treated as a
+    # feature (it would break the float64 cast in _feature_matrix).
+    profiles["label"] = "not a number"
+    scores = projection_scores(profiles)
+    assert len(scores) == 3
+
+
 def test_control_separation_zfactor() -> None:
     # Well-separated controls -> high Z-factor; identical -> <= 0.
     separated = control_separation_zfactor(

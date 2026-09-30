@@ -119,7 +119,12 @@ def projection_scores(
         raise ValueError(f"no rows for perturbed control {perturbed_control!r}")
 
     if feature_cols is None:
-        feature_cols = [c for c in profiles.columns if not c.startswith("Metadata_")]
+        feature_cols = [
+            c
+            for c in profiles.columns
+            if not c.startswith("Metadata_")
+            and pd.api.types.is_numeric_dtype(profiles[c])
+        ]
 
     feats = _feature_matrix(profiles, feature_cols)
     control_centre = _feature_matrix(control_rows, feature_cols).mean(axis=0)

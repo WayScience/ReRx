@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -545,10 +546,15 @@ def cmd_projection() -> None:
                     as_index=False,
                 )[feat_cols].median()
             )
-            scores = projection_scores(
-                agg,
-                feature_cols=feat_cols,
-            )
+            scores = None
+            try:
+                scores = projection_scores(
+                    agg,
+                    feature_cols=feat_cols,
+                )
+            except ValueError as exc:
+                _log(f"projection {profiler} {experiment}/{plate}: skipped -- {exc}")
+                continue
             out = (
                 dest_dir
                 / f"experiment={experiment}"
@@ -715,6 +721,12 @@ def cmd_finalize() -> None:
         # Metadata_Experiment/Plate/Well/Site for the site join), so
         # rename at this seam, one shard at a time.
         morphem_partitions = RUN_DIR / "profiles" / "morphem" / "raw_partitioned"
+        if morphem_partitions.is_dir():
+            # Clear any prior attempt's partitions first:
+            # _append_partitioned_profiles merges onto whatever is
+            # already on disk, so a rerun without this would
+            # duplicate every row already partitioned last time.
+            shutil.rmtree(morphem_partitions)
         for path in morphem_parquets:
             frame = pd.read_parquet(path).rename(
                 columns={
