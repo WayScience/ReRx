@@ -88,6 +88,4 @@ def test_build_profiles_perturbation_matches_pycytominer_rules() -> None:
     ].to_dict()
     assert state_by_perturbation["mock"] == "Mock"
     assert state_by_perturbation["active_untreated"] == "Active SARS-CoV-2"
-    assert (
-        state_by_perturbation["Remdesivir (GS-5734)__0.1"] == "Active SARS-CoV-2"
-    )
+    assert state_by_perturbation["Remdesivir (GS-5734)__0.1"] == "Active SARS-CoV-2"

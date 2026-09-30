@@ -23,6 +23,7 @@ Subcommands:
     morphem <sid>       MorphEm-embed one crop shard (inside morphem.sif)
     finalize            merge, annotate/normalize/select, validate, catalog
     recursion-buscar    buscar-score Recursion's published site embeddings
+    projection          Recursion-style on/off-perturbation scores per plate
 """
 
 from __future__ import annotations
@@ -35,6 +36,12 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import pandas as pd
 
 RUN_DIR = Path(os.environ["RERX_RUN_DIR"])
 SCRATCH = Path(os.environ["RERX_SCRATCH"])
@@ -317,20 +324,36 @@ def cmd_morphem(shard_id: str) -> None:
 
 
 def _finalize_profiles(
-    profiles: "object",
+    profiles: "pd.DataFrame | Iterable[tuple[tuple[str, str], pd.DataFrame]]",
     profiler: str,
     buscar: bool,
 ) -> None:
-    """Annotate/normalize/select (and buscar) per plate for one profiler."""
+    """Annotate/normalize/select (and buscar) per plate for one profiler.
+
+    ``profiles`` may be a single in-memory frame (pilot scale) or a
+    sequence of per-plate frames already partitioned by the caller
+    (streaming path at full scale). Only one plate's rows are in
+    memory at a time either way.
+    """
     import pandas as pd
 
     from rerx.cytotable import plate_partitions
     from rerx.finalize import finalize_plate
 
     pilot = pd.DataFrame(_load_selection())
-    normalized_frames = []
-    feature_selected_frames = []
-    for (experiment, plate), plate_profiles in plate_partitions(profiles):
+    normalized_rows = 0
+    selected_cols = None
+    plates = 0
+    # Streaming: when the caller passes an iterable of pre-partitioned
+    # (key, frame) pairs (iter_shard_partitions / iter_partition_frames
+    # output), consume it directly; only a plain DataFrame needs
+    # plate_partitions grouping.
+    pairs: Iterable[tuple[tuple[str, str], pd.DataFrame]] = (
+        profiles  # type: ignore[assignment]
+        if hasattr(profiles, "__iter__") and not isinstance(profiles, pd.DataFrame)
+        else plate_partitions(profiles)  # type: ignore[arg-type]
+    )
+    for (experiment, plate), plate_profiles in pairs:
         plate_metadata = pilot[
             (pilot["experiment"].astype(str) == experiment)
             & (pilot["plate"].astype(str) == plate)
@@ -344,8 +367,12 @@ def _finalize_profiles(
             profiler=profiler,
             run_buscar=buscar,
         )
-        normalized_frames.append(result.normalized)
-        feature_selected_frames.append(result.feature_selected)
+        # finalize_plate already wrote the normalized and
+        # feature-selected parquets for this plate; keep only counts
+        # (not the frames) so memory stays per-plate.
+        normalized_rows += len(result.normalized)
+        selected_cols = result.feature_selected.shape[1]
+        plates += 1
         if result.buscar_skipped_reason:
             _log(
                 f"{profiler} {experiment}/{plate}: buscar skipped -- "
@@ -353,12 +380,9 @@ def _finalize_profiles(
             )
         else:
             _log(f"{profiler} {experiment}/{plate}: buscar scored")
-    normalized = pd.concat(normalized_frames, ignore_index=True)
-    selected = pd.concat(feature_selected_frames, ignore_index=True)
     _log(
-        f"{profiler}: annotated/normalized {len(normalized)} cells "
-        f"across {len(normalized_frames)} plate(s); feature_selected -> "
-        f"{selected.shape[1]} cols"
+        f"{profiler}: annotated/normalized {normalized_rows} cells "
+        f"across {plates} plate(s); feature_selected -> {selected_cols} cols"
     )
 
 
@@ -366,9 +390,12 @@ def _fuse_finalized_profiles() -> None:
     """Fuse finalized CP and MorphEm profiles on Metadata_cell_id.
 
     Pairs each plate's CP table with its own MorphEm table by
-    experiment/plate partition (not sorted-file order), and fuses every
-    shared pair; unmatched partitions are skipped (inner-join behavior,
-    same as fuse_features itself).
+    experiment/plate partition (not sorted-file order), and fuses
+    every shared pair; unmatched partitions are skipped (inner-join
+    behavior, same as fuse_features itself).
+
+    Streams: one plate pair is loaded, fused, and written at a time;
+    no whole-dataset fused frame is held.
     """
     import pandas as pd
 
@@ -396,17 +423,19 @@ def _fuse_finalized_profiles() -> None:
             "partitions between CP and MorphEm profiles"
         )
         return
-    fused = pd.concat(
-        [
-            fuse_features(pd.read_parquet(cp_path), pd.read_parquet(me_path))
-            for cp_path, me_path in pairs
-        ],
-        ignore_index=True,
-    )
-    fused_paths = write_fused_profiles(fused, RUN_DIR)
+    fused_rows = 0
+    fused_cols = 0
+    partitions_written: list[Path] = []
+    for cp_path, me_path in pairs:
+        fused = fuse_features(pd.read_parquet(cp_path), pd.read_parquet(me_path))
+        written = write_fused_profiles(fused, RUN_DIR)
+        partitions_written.extend(written)
+        fused_rows += len(fused)
+        fused_cols = fused.shape[1]
+        del fused
     _log(
-        f"fused: {len(fused)} cells x {fused.shape[1]} cols from "
-        f"{len(pairs)} plate(s) -> {len(fused_paths)} partition(s)"
+        f"fused: {fused_rows} cells x {fused_cols} cols from "
+        f"{len(pairs)} plate(s) -> {len(partitions_written)} partition(s)"
     )
 
 
@@ -418,15 +447,23 @@ def cmd_recursion_buscar() -> None:
     from rerx.cytotable import plate_partitions
     from rerx.embeddings import build_recursion_buscar_profiles
 
-    emb_path = (
-        RUN_DIR
-        / "baseline"
-        / "recursion_site_embeddings"
-        / ("recursion_site_embeddings.parquet")
-    )
+    emb_dir = RUN_DIR / "baseline" / "recursion_site_embeddings"
+    emb_path = emb_dir / "recursion_site_embeddings.parquet"
     if not emb_path.is_file():
-        _log("recursion buscar skipped: published embeddings not present")
-        return
+        # Fetch and convert the published embeddings on first use
+        # (idempotent: download_embeddings skips an existing ZIP).
+        from rerx.embeddings import (
+            convert_embeddings,
+            download_embeddings,
+        )
+
+        cache_root = (
+            Path(os.environ.get("RERX_EMBEDDINGS_CACHE", str(RUN_DIR / "source-cache")))
+            / "rxrx19a"
+        )
+        _log("recursion: downloading published site embeddings")
+        zip_path, _digest = download_embeddings(cache_root)
+        convert_embeddings(zip_path, emb_dir)
     embeddings = pd.read_parquet(emb_path)
     selection = pd.DataFrame(_load_selection())
     profiles = build_recursion_buscar_profiles(embeddings, selection)
@@ -469,69 +506,235 @@ def cmd_recursion_buscar() -> None:
         _log(f"recursion {experiment}/{plate}: buscar scored")
 
 
+def cmd_projection() -> None:
+    """Recursion-style on/off-perturbation scores for each profiler."""
+    import pandas as pd
+
+    from rerx.projection import projection_scores
+    from rerx.streaming import iter_partition_frames
+
+    for profiler in ("cellprofiler", "morphem"):
+        norm_dir = RUN_DIR / "profiles" / profiler / "normalized"
+        norm_paths = sorted(norm_dir.glob("*/*/*.parquet"))
+        if not norm_paths:
+            _log(f"projection skipped: no normalized {profiler} profiles")
+            continue
+        # Feature columns are identical across a profiler's plates;
+        # read them from the first partition's schema only.
+        import pyarrow.parquet as pq
+
+        first_cols = pq.read_schema(norm_paths[0]).names
+        feat_cols = [
+            c
+            for c in first_cols
+            if c.startswith(("Cells_", "Cytoplasm_", "Nuclei_", "Morphem_"))
+        ]
+        dest_dir = RUN_DIR / "projection" / profiler
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for (experiment, plate), normed in iter_partition_frames(norm_dir):
+            # Score the well-level aggregate (one row per well, the
+            # replicate unit), matching how the pilot reports score.
+            agg = pd.DataFrame(
+                normed.groupby(
+                    [
+                        "Metadata_Experiment",
+                        "Metadata_Plate",
+                        "Metadata_Well",
+                        "Metadata_perturbation",
+                    ],
+                    as_index=False,
+                )[feat_cols].median()
+            )
+            scores = projection_scores(
+                agg,
+                feature_cols=feat_cols,
+            )
+            out = (
+                dest_dir
+                / f"experiment={experiment}"
+                / f"plate={plate}"
+                / "scores.parquet"
+            )
+            out.parent.mkdir(parents=True, exist_ok=True)
+            scores.to_parquet(out, index=False)
+            _log(
+                f"projection {profiler} {experiment}/{plate}: "
+                f"{len(scores)} perturbations scored -> {out}"
+            )
+            del normed, agg, scores
+
+
+def _append_partitioned_profiles(frame: "pd.DataFrame", dest_root: Path) -> None:
+    """Append one frame's rows into the partitioned Parquet layout.
+
+    Streaming helper for raw shards that need regrouping into the
+    ``experiment=<e>/plate=<p>/`` layout (e.g. the MorphEm raw
+    shards, which are per-crop-shard, not per-plate). Reads one
+    caller-provided frame at a time; partitions accumulate on disk
+    over multiple appends, so memory stays one-frame.
+    """
+    import pandas as pd
+
+    from rerx.cytotable import plate_partitions
+
+    for (experiment, plate), part in plate_partitions(frame):  # type: ignore[arg-type]
+        part_dir = dest_root / f"experiment={experiment}" / f"plate={plate}"
+        part_dir.mkdir(parents=True, exist_ok=True)
+        tmp_path = part_dir / "profiles.parquet.tmp"
+        final_path = part_dir / "profiles.parquet"
+        rows = part
+        if final_path.exists():
+            prior = pd.read_parquet(final_path)
+            rows = pd.concat([prior, part], ignore_index=True)
+            del prior
+        rows.to_parquet(tmp_path, index=False, compression="zstd")
+        tmp_path.replace(final_path)
+        del rows
+
+
+def _validate_run_streaming(
+    shard_parquets: list[Path],
+    sqlite_paths: list[Path],
+    crop_dir: Path,
+) -> int:
+    """Run the run's validation checks one shard at a time.
+
+    Returns the number of cells whose crops decoded and joined
+    cleanly. Raises SystemExit on the first failure.
+    """
+    import pandas as pd
+
+    from rerx.cytotable import check_schema_consistency
+    from rerx.streaming import shard_parquet_pairs
+    from rerx.validate import (
+        check_crops_decode,
+        check_sqlite_integrity,
+        validate_crops_join_one_to_one,
+    )
+
+    for sqlite_path in sqlite_paths:
+        result = check_sqlite_integrity(sqlite_path)
+        if not result.passed:
+            raise SystemExit(
+                f"sqlite integrity failed for {sqlite_path.name}: "
+                f"{result.integrity_messages} orphans={result.orphan_counts}"
+            )
+    schema_check = check_schema_consistency(shard_parquets)
+    if not schema_check.consistent:
+        raise SystemExit(f"shard schema mismatch: {schema_check.mismatches}")
+
+    crop_paths = sorted(crop_dir.glob("*.parquet"))
+    pairs, unmatched = shard_parquet_pairs(crop_paths, shard_parquets)
+    if unmatched:
+        raise SystemExit(
+            f"crop shards without profile shards: {len(unmatched)} "
+            f"(e.g. {unmatched[0].name})"
+        )
+    decoded_total = 0
+    for crop_path, profile_path in pairs:
+        crops = pd.read_parquet(crop_path)
+        profiles = pd.read_parquet(profile_path)
+        decode = check_crops_decode(crops)
+        if not decode.passed:
+            raise SystemExit(
+                f"crop JPEG decode failures in {crop_path.name}: "
+                f"{decode.decode_failures[:5]}"
+            )
+        try:
+            validate_crops_join_one_to_one(crops, profiles)
+        except ValueError as exc:
+            raise SystemExit(f"crop/profile join failed for {crop_path.name}: {exc}")
+        decoded_total += decode.checked
+        del crops, profiles
+    _log(
+        f"validation: {len(sqlite_paths)} sqlite shard(s) integrity OK; "
+        f"{len(shard_parquets)} shard schemas consistent; "
+        f"{len(pairs)} crop shard(s) join + decode checks passed "
+        f"({decoded_total} cells)"
+    )
+    return decoded_total
+
+
 def cmd_finalize() -> None:
-    """Merge shards, then finalize (annotate/normalize/select/buscar) per plate."""
+    """Finalize (annotate/normalize/select/buscar), fuse, validate, catalog.
+
+    Streaming at every stage (no whole-dataset frames in memory):
+
+    - CP profiles stream per plate straight from the shard parquets.
+    - The MorphEm raw shards are partitioned once, plate by plate
+      (each plate's rows are the only ones in memory), then finalized
+      per plate from that partitioned layout.
+    - Fusion pairs CP and MorphEm tables per plate and writes each
+      fused partition immediately.
+    - Validation runs one shard at a time (crop join + JPEG decode
+      against that shard's own profile shard).
+    - The catalog build globs paths only (DuckDB reads files
+      lazily).
+    """
     import pandas as pd
 
     from rerx.catalog import build_run_catalog
-    from rerx.cytotable import write_partitioned_profiles
-    from rerx.finalize import finalize_plate  # noqa: F401  (re-exported use)
-    from rerx.validate import validate_pilot_run
+    from rerx.streaming import iter_partition_frames, iter_shard_partitions
 
     shard_parquets = sorted((SCRATCH / RUN_ID / "cytotable").glob("*.parquet"))
     if not shard_parquets:
         raise SystemExit(f"no shard parquets under {SCRATCH / RUN_ID / 'cytotable'}")
-    profiles = pd.concat(
-        [pd.read_parquet(p) for p in shard_parquets], ignore_index=True
+
+    # 1. Finalize CellProfiler profiles per plate, streamed from the
+    #    shard parquets (each plate is its own biological batch).
+    #    The durable partitioned raw layout is a required catalog and
+    #    buscar input, so write it as the same per-plate pass.
+    _finalize_profiles(
+        iter_shard_partitions(shard_parquets), profiler="cellprofiler", buscar=True
     )
-    _log(f"merged {len(shard_parquets)} shards -> {len(profiles)} cells")
 
+    # 1b. Durable raw partitions (catalog + buscar input): written
+    #     plate by plate from the same shard parquets, streaming.
     raw_dir = RUN_DIR / "profiles" / "cellprofiler" / "raw"
-    partition_paths = write_partitioned_profiles(profiles, raw_dir)
-    _log(f"wrote {len(partition_paths)} partitioned profile files")
+    for (experiment, plate), frame in iter_shard_partitions(shard_parquets):
+        part_dir = raw_dir / f"experiment={experiment}" / f"plate={plate}"
+        part_dir.mkdir(parents=True, exist_ok=True)
+        tmp_path = part_dir / "profiles.parquet.tmp"
+        final_path = part_dir / "profiles.parquet"
+        frame.to_parquet(tmp_path, index=False, compression="zstd")
+        tmp_path.replace(final_path)
 
-    # Per-plate finalize batch (annotate/normalize/select_features/buscar):
-    # each plate is its own biological batch with its own control
-    # population, so this scales to a full multi-plate run without ever
-    # holding more than one plate's profiles in memory at once (unlike a
-    # single dataset-wide normalize/select_features/buscar call).
-    _finalize_profiles(profiles, profiler="cellprofiler", buscar=True)
-
-    # MorphEm pass: same per-plate finalize over the morphem raw shards,
-    # only when every morphem shard is present (a partial set would
-    # silently produce incomplete buscar scores).
+    # 2. MorphEm pass: partition the raw shards plate by plate (only
+    #    when every expected morphem shard is present; a partial set
+    #    would silently produce incomplete scores).
     morphem_parquets = sorted(
         (RUN_DIR / "profiles" / "morphem" / "raw").glob("*.parquet")
     )
     morphem_shards = {p.stem for p in morphem_parquets}
     expected = {s["shard_id"] for s in _load_shards()}
     if morphem_shards == expected:
-        morphem_profiles = pd.concat(
-            [pd.read_parquet(p) for p in morphem_parquets], ignore_index=True
-        )
         # Crop-carried metadata uses plain lowercase names
         # (Metadata_experiment, Metadata_plate, ...); the shared
-        # finalize layer expects the cytotable-style
-        # Image_Metadata_* names (annotate_profiles then maps them
-        # to Metadata_Experiment/Plate/Well/Site for the site join),
-        # so rename before the per-plate batch.
-        morphem_profiles = morphem_profiles.rename(
-            columns={
-                "Metadata_experiment": "Image_Metadata_Experiment",
-                "Metadata_plate": "Image_Metadata_Plate",
-                "Metadata_well": "Image_Metadata_Well",
-                "Metadata_site": "Image_Metadata_Site",
-            }
+        # finalize layer expects the cytotable-style Image_Metadata_*
+        # names (annotate_profiles then maps them to
+        # Metadata_Experiment/Plate/Well/Site for the site join), so
+        # rename at this seam, one shard at a time.
+        morphem_partitions = RUN_DIR / "profiles" / "morphem" / "raw_partitioned"
+        for path in morphem_parquets:
+            frame = pd.read_parquet(path).rename(
+                columns={
+                    "Metadata_experiment": "Image_Metadata_Experiment",
+                    "Metadata_plate": "Image_Metadata_Plate",
+                    "Metadata_well": "Image_Metadata_Well",
+                    "Metadata_site": "Image_Metadata_Site",
+                }
+            )
+            _append_partitioned_profiles(frame, morphem_partitions)
+        _log(f"morphem: partitioned {len(morphem_parquets)} raw shard(s)")
+        _finalize_profiles(
+            iter_partition_frames(morphem_partitions),
+            profiler="morphem",
+            buscar=True,
         )
-        _log(
-            f"morphem: merged {len(morphem_parquets)} shards "
-            f"-> {len(morphem_profiles)} cells"
-        )
-        _finalize_profiles(morphem_profiles, profiler="morphem", buscar=True)
 
         # Fused output: early feature-concatenation fusion of the two
-        # finalized spaces on Metadata_cell_id (see rerx.fuse). Labeled
-        # in profiles/fused/fusion.json ("what kind of fused").
+        # finalized spaces on Metadata_cell_id (see rerx.fuse).
+        # Labeled in profiles/fused/fusion.json ("what kind of fused").
         _fuse_finalized_profiles()
     elif morphem_shards:
         missing = sorted(expected - morphem_shards)
@@ -542,23 +745,15 @@ def cmd_finalize() -> None:
     else:
         _log("morphem finalize skipped: no morphem shards present")
 
-    crop_paths = sorted((RUN_DIR / "crops" / "cells").glob("*.parquet"))
-    crops = pd.concat([pd.read_parquet(p) for p in crop_paths], ignore_index=True)
+    # 3. Validation, one shard at a time (see _validate_run_streaming).
     sqlite_paths = sorted(SCRATCH.glob(f"{RUN_ID}/*/output/*.sqlite"))
-    report = validate_pilot_run(
-        sqlite_paths=sqlite_paths,
-        profile_parquet_paths=partition_paths,
-        profiles=profiles,
-        crops=crops,
+    _validate_run_streaming(
+        shard_parquets,
+        sqlite_paths,
+        crop_dir=RUN_DIR / "crops" / "cells",
     )
-    summary = report.summary()
-    (RUN_DIR / "validation_report.txt").write_text(
-        json.dumps(summary, indent=2, default=str) + "\n"
-    )
-    if not report.passed:
-        raise SystemExit(f"pilot validation FAILED:\n{summary}")
-    _log("pilot validation: PASS")
 
+    # 4. Catalog + success marker.
     build_run_catalog(
         run_root=RUN_DIR,
         catalog_path=RUN_DIR / "catalog" / "run.ducklake",
@@ -578,26 +773,28 @@ def main() -> None:
         p.add_argument("shard_id")
     sub.add_parser("finalize")
     sub.add_parser("recursion-buscar")
+    sub.add_parser("projection")
     args = parser.parse_args()
 
-    if args.command == "prepare":
-        cmd_prepare()
-    elif args.command == "download":
-        cmd_download()
-    elif args.command == "cellprofiler":
-        cmd_cellprofiler(args.shard_id)
-    elif args.command == "cytotable":
-        cmd_cytotable(args.shard_id)
-    elif args.command == "crops":
-        cmd_crops(args.shard_id)
-    elif args.command == "morphem":
-        cmd_morphem(args.shard_id)
-    elif args.command == "finalize":
-        cmd_finalize()
-    elif args.command == "recursion-buscar":
-        cmd_recursion_buscar()
-    else:  # pragma: no cover - argparse enforces choices
-        raise SystemExit(f"unknown command {args.command!r}")
+    # Dispatch table keeps main() under the complexity budget as
+    # subcommands grow (C901 at 11 branches otherwise).
+    shard_commands = ("cellprofiler", "cytotable", "crops", "morphem")
+    no_arg_commands = {
+        "prepare": cmd_prepare,
+        "download": cmd_download,
+        "finalize": cmd_finalize,
+        "recursion-buscar": cmd_recursion_buscar,
+        "projection": cmd_projection,
+    }
+    if args.command in shard_commands:
+        {
+            "cellprofiler": cmd_cellprofiler,
+            "cytotable": cmd_cytotable,
+            "crops": cmd_crops,
+            "morphem": cmd_morphem,
+        }[args.command](args.shard_id)
+    else:
+        no_arg_commands[args.command]()
 
 
 if __name__ == "__main__":

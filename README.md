@@ -92,8 +92,12 @@ plate.
 
 ## buscar reversal scoring
 
-buscar (`rerx.buscar`) answers one question per treatment: how far does
-this treatment move a diseased cell back toward the healthy state?
+buscar (`rerx.buscar`) answers two questions per treatment:
+
+1. How far does this treatment move a diseased cell back toward the
+   healthy state? (the on-score)
+1. Does the treatment touch anything else? (the off-score, which
+   flags off-target effects)
 
 The scoring needs three pieces of metadata, all added automatically
 during the finalize stage:
@@ -107,6 +111,23 @@ during the finalize stage:
   `Remdesivir (GS-5734)__1.0`.
 - `Metadata_buscar_state` — `Mock` for mock wells, `Active SARS-CoV-2`
   for every challenged well (UV, active-untreated, treated).
+
+buscar needs two control populations:
+
+- **Target (healthy):** `mock` — uninfected cells. The on-score is the
+  distance from this population. 0 means fully rescued to healthy, 1
+  means still diseased.
+- **Reference (disease):** `active_untreated` — infected cells with no
+  drug.
+
+Remdesivir is our known-active drug control. UV-inactivated virus is
+our challenge control that should look healthy.
+
+A note on naming: RxRx19a's metadata has a column called
+`disease_condition`, and `Mock` is one of its values (alongside
+`UV Inactivated SARS-CoV-2` and `Active SARS-CoV-2`). But `Mock`
+there means the uninfected control — the healthy baseline — not a
+diseased state.
 
 buscar writes two files per plate:
 
@@ -167,6 +188,21 @@ DuckDB's `read_parquet`:
 SELECT *
 FROM read_parquet('profiles/cellprofiler/feature_selected/**/*.parquet');
 ```
+
+## Memory footprint at scale
+
+The `finalize` step (annotate/normalize/select/buscar/fuse/validate)
+streams: it holds one plate's rows (or one shard's crops) in memory
+at a time, never the whole run. Memory scales with the largest single
+plate, not the full dataset — see `src/rerx/streaming.py` and the
+comment on the `FINALIZE` process in `nextflow.config`.
+
+One step does not yet stream: `recursion-buscar` downloads and
+converts Recursion's published site-embedding archive (~1.5 GB
+zipped) into one Parquet file in memory. It must run as a Slurm job,
+not on a login node — a login-node run OOM-killed on Alpine's ~1.6 GB
+per-user cap. `FINALIZE`'s 64 GB Slurm allocation covers it today;
+revisit if the published archive grows.
 
 ## Adapting this pipeline to a different dataset
 
