@@ -83,9 +83,7 @@ def test_projection_scores_output_schema() -> None:
 
 def test_projection_scores_rejects_missing_controls() -> None:
     profiles = _profiles()
-    profiles = profiles[
-        profiles["Metadata_perturbation"] != "active_untreated"
-    ]
+    profiles = profiles[profiles["Metadata_perturbation"] != "active_untreated"]
     with pytest.raises(ValueError, match="active_untreated"):
         projection_scores(profiles)
 

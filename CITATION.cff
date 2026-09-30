@@ -2,7 +2,7 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 ---
 cff-version: 1.2.0
-title: ReRx
+title: RxRx19a reanalysis (ReRx)
 message: >-
   If you use this software, please cite it using the
   metadata from the CITATION.cff file.
@@ -14,7 +14,7 @@ authors:
   - given-names: Gregory
     family-names: Way
     orcid: "https://orcid.org/0000-0002-0503-9348"
-repository-code: "https://github.com/WayScience/ReRx"
+repository-code: "https://github.com/WayScience/RxRx19a-reanalysis"
 abstract: >-
   Reanalysis of the RxRx19a high-content imaging dataset: a reproducible
   pipeline that measures whether treatments move SARS-CoV-2-infected

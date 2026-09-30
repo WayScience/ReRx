@@ -99,6 +99,39 @@ buscar (`rerx.buscar`) answers two questions per treatment:
 1. Does the treatment touch anything else? (the off-score, which
    flags off-target effects)
 
+```mermaid
+flowchart TD
+    A["RxRx19a images<br/>(kidney cells, 5 channels)"] --> B["CellProfiler / MorphEm<br/>(one row of numbers per cell)"]
+    B --> C1["Mock wells<br/>(no virus: the healthy state)"]
+    B --> C2["Active untreated wells<br/>(virus, no drug: the diseased state)"]
+    B --> C3["Treated wells<br/>(virus + one drug dose)"]
+
+    C1 --> D["buscar builds two signatures:<br/>which numbers separate healthy from diseased"]
+    C2 --> D
+
+    D --> E1["On-score for each treatment:<br/>how far it moves cells toward healthy"]
+    D --> E2["Off-score for each treatment:<br/>does it change anything unrelated"]
+
+    C3 --> E1
+    C3 --> E2
+
+    E1 --> F["Low on-score + low off-score<br/>= a promising drug candidate"]
+    E2 --> F
+```
+
+buscar compares each drug-treated well against two reference states:
+the healthy state (mock) and the diseased state (active untreated
+infection). It does not compare drugs to each other directly.
+
+A treatment is useful only if diseased cells start to look healthy
+again. The on-score checks that. A treatment can also change cell
+shape or behavior in ways that have nothing to do with the virus.
+The off-score checks that.
+
+A good drug candidate has a low on-score (cells move close to
+healthy) and a low off-score (the drug does not disturb anything
+else).
+
 The scoring needs three pieces of metadata, all added automatically
 during the finalize stage:
 
@@ -226,48 +259,8 @@ Everything else — sharding, container invocation, CytoTable conversion,
 crops, MorphEm embedding, the QC gate, buscar, fusion, the catalog, and
 the Nextflow/Slurm orchestration — works unchanged.
 
-## High-level overview
+## References
 
-This template gives you a ready-to-run Python research software project with:
-
-- `uv`-managed environments and dependencies
-- Testing and coverage defaults via `pytest` + `coverage.py`
-- Pre-commit automation for formatting, linting, and type checks
-- GitHub Actions workflows for linting, tests, docs, and release-related automation
-- Starter package + CLI scaffold under `src/`
-- Documentation scaffold under `docs/`
-- Poe task entrypoints for common local workflows (including a full local pipeline task)
-
-## Included agent skills
-
-This project includes agent guidance in `.agents/skills/` with common skills for:
-
-- Test-driven development
-- Incremental implementation
-- Code review and quality checks
-- CI/CD and automation workflow alignment
-- Debugging and error recovery
-- Optional learning exercises (`learning-opportunities`)
-- Simplified Technical English (ASD-STE100) writing checks (`simple-english`)
-
-If you do not want to use local agent guidance in your project, remove `AGENTS.md` and the `.agents/` directory.
-
-## Post template copy instructions
-
-While we provide some customizations to the files in this template based on your specification there's likely a chance some things aren't perfect.
-We recommend taking a look at each file used within this template to ensure it meets your expectations for the project you're working on.
-In addition, consider the following steps to help ensure the project is in good shape before proceeding too far.
-
-- [ ] Remove files you plan on not using (e.g. `src/notebooks`, `.github/workflows/publish-pypi.yml`, etc.).
-- [ ] Update the `LICENSE` file based on the project.
-- [ ] Update the `CITATION.cff` file based on the project.
-- [ ] Update `.github/CODEOWNERS` with the right GitHub handle(s) for review ownership, and expand it to additional owners/teams and path-specific ownership rules as the project grows.
-- [ ] Update the project dependencies using `uv remove` or `uv add`.
-- [ ] Update the `pyproject.toml` file based on the project.
-- [ ] Enable `pre-commit-lite` to help automate corrections to code during pull request updates. Otherwise, consider removing the step: labeled with: `pre-commit-ci/lite-action` within `.github/workflows/run-tests.yml`.
-- [ ] Enable private security vulnerability issue reporting within the repo settings (e.g. https://github.com/repo_org/repo_name/settings/security_analysis)
-- [ ] Enable [branch protection rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule) to require one pull request review approval per pull request to help with maintainer expectations.
-- [ ] Add collaborators to access the repository.
-- [ ] Create a `pages` branch and enable GitHub Pages on the repository (for documentation).
-- [ ] Update the GitHub repository description.
-- [ ] Remove these instructions!
+`CITATION.cff` lists every paper, dataset, and tool this project cites
+or depends on. Cite this software using the `authors` metadata at the
+top of that file.

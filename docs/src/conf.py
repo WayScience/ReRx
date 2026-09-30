@@ -56,7 +56,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/WayScience/ReRx",
+            "url": "https://github.com/WayScience/RxRx19a-reanalysis",
             "icon": "fa-brands fa-github",
         },
     ],

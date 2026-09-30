@@ -129,6 +129,7 @@ def test_shard_parquet_pairs_matches_by_stem(tmp_path: Path) -> None:
     ]
     assert [p.name for p in unmatched] == ["shard-0002.parquet"]
 
+
 def test_shards_by_partition_groups_shard_files_by_plate(tmp_path: Path) -> None:
     # Two shards, both rows from plate 25 -> one partition group.
     _write_shard(
@@ -140,9 +141,7 @@ def test_shards_by_partition_groups_shard_files_by_plate(tmp_path: Path) -> None
         _shard_frame([("c", "HRCE-1", "25")]),
     )
 
-    groups = shards_by_partition(
-        sorted((tmp_path / "cytotable").glob("*.parquet"))
-    )
+    groups = shards_by_partition(sorted((tmp_path / "cytotable").glob("*.parquet")))
     assert [k for k, _ in groups] == [("HRCE-1", "25")]
     assert [p.name for p in groups[0][1]] == [
         "shard-0000.parquet",

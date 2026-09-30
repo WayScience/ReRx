@@ -161,7 +161,7 @@ def shards_by_partition(
     grouped: dict[tuple[str, str], list[Path]] = {}
     for path in shard_paths:
         frame = pd.read_parquet(path, columns=[experiment_column, plate_column])
-        for (exp, plate) in frame.drop_duplicates().itertuples(index=False):
+        for exp, plate in frame.drop_duplicates().itertuples(index=False):
             grouped.setdefault((str(exp), str(plate)), []).append(path)
     return sorted(grouped.items())
 
@@ -237,7 +237,5 @@ def iter_partition_frames(
     FileNotFoundError
         If no files match.
     """
-    for (experiment, plate), paths in partition_parquet_paths(
-        root, glob_pattern
-    ):
+    for (experiment, plate), paths in partition_parquet_paths(root, glob_pattern):
         yield (experiment, plate), read_partitioned_parquets(paths)

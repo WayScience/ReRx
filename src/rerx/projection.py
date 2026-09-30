@@ -34,9 +34,7 @@ PERTURBED_CONTROL = "active_untreated"
 PERTURBATION_COL = "Metadata_perturbation"
 
 
-def _feature_matrix(
-    profiles: pd.DataFrame, feature_cols: list[str]
-) -> np.ndarray:
+def _feature_matrix(profiles: pd.DataFrame, feature_cols: list[str]) -> np.ndarray:
     """Feature matrix with imputed NaNs (column means), float64."""
     mat = profiles[feature_cols].to_numpy(dtype=np.float64, copy=True)
     col_means = np.nanmean(mat, axis=0)
@@ -113,27 +111,19 @@ def projection_scores(
         If either control population is missing.
     """
     perturbations = profiles[perturbation_col]
-    control_rows = profiles.loc[
-        profiles[perturbation_col] == untreated_control
-    ]
-    perturbed_rows = profiles.loc[
-        profiles[perturbation_col] == perturbed_control
-    ]
+    control_rows = profiles.loc[profiles[perturbation_col] == untreated_control]
+    perturbed_rows = profiles.loc[profiles[perturbation_col] == perturbed_control]
     if control_rows.empty:
         raise ValueError(f"no rows for untreated control {untreated_control!r}")
     if perturbed_rows.empty:
         raise ValueError(f"no rows for perturbed control {perturbed_control!r}")
 
     if feature_cols is None:
-        feature_cols = [
-            c for c in profiles.columns if not c.startswith("Metadata_")
-        ]
+        feature_cols = [c for c in profiles.columns if not c.startswith("Metadata_")]
 
     feats = _feature_matrix(profiles, feature_cols)
     control_centre = _feature_matrix(control_rows, feature_cols).mean(axis=0)
-    perturbed_centre = _feature_matrix(perturbed_rows, feature_cols).mean(
-        axis=0
-    )
+    perturbed_centre = _feature_matrix(perturbed_rows, feature_cols).mean(axis=0)
 
     # Vector from untreated to perturbed barycenter; its length sets
     # the on-score scale so controls land on 0 and 1.
