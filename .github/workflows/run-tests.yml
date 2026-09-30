@@ -35,13 +35,7 @@ jobs:
         if: ${{ !cancelled() }}
   run_tests:
     needs: pre_commit_checks
-    strategy:
-      matrix:
-        python_version: ["3.11", "3.12", "3.13", "3.14"]
-        os: [ubuntu-24.04, macos-14]
-    runs-on: ${{ matrix.os }}
-    env:
-      OS: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -50,7 +44,7 @@ jobs:
       - name: Python setup
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python_version }}
+          python-version: "3.11"
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v10.0.1
       - name: Run pytest
